@@ -95,7 +95,7 @@ export function App() {
           <Card className="border-border/70 bg-card/90 shadow-sm">
             <CardHeader className="pb-4">
               <CardTitle className="text-3xl font-semibold tracking-tight md:text-4xl">
-                Setup Activity Overview
+                Setup Manager Activity Overview
               </CardTitle>
               <CardDescription className="text-base md:text-lg">
                 Track active setup workflows, completion trends, and failure points in real time.

@@ -4,8 +4,6 @@ A real-time webhook dashboard for [Setup Manager](https://github.com/nicknameisl
 
 Built with React, shadcn/ui, and Cloudflare Workers. Deploys in minutes. Secured with Cloudflare Access.
 
-[![Deploy to Cloudflare Workers](https://deploy.workers.cloudflare.com/button)](https://deploy.workers.cloudflare.com/?url=https://github.com/motionbug/setup-manager-hud)
-
 <!-- TODO: Add a screenshot here - light and dark mode side by side -->
 <!-- ![Setup Manager HUD Dashboard](./docs/screenshot.png) -->
 
@@ -25,6 +23,8 @@ Setup Manager sends webhook events during macOS device provisioning. This dashbo
 
 ### Option 1: Deploy Button (Fastest)
 
+[![Deploy to Cloudflare Workers](https://deploy.workers.cloudflare.com/button)](https://deploy.workers.cloudflare.com/?url=https://github.com/motionbug/setupmanagerhud)
+
 Click the deploy button above. It will:
 1. Fork this repo to your GitHub account
 2. Set up a GitHub Actions workflow
@@ -43,8 +43,8 @@ After deployment, you'll need to:
 
 ```bash
 # 1. Clone the repo
-git clone https://github.com/motionbug/setup-manager-hud.git
-cd setup-manager-hud
+git clone https://github.com/motionbug/setupmanagerhud.git
+cd setupmanagerhud
 
 # 2. Install dependencies
 npm install
@@ -64,7 +64,7 @@ npx wrangler kv namespace create WEBHOOKS
 npm run deploy
 ```
 
-Your dashboard is now live at `https://setup-manager-hud.<your-subdomain>.workers.dev`
+Your dashboard is now live at `https://setupmanagerhud.<your-subdomain>.workers.dev`
 
 **Next step:** [Secure the dashboard](#securing-the-dashboard) so only you can access it.
 
@@ -104,9 +104,9 @@ In your Setup Manager configuration, set the webhook URL to:
 <key>webhooks</key>
 <dict>
   <key>finished</key>
-  <string>https://setup-manager-hud.<your-subdomain>.workers.dev/webhook</string>
+  <string>https://setupmanagerhud.<your-subdomain>.workers.dev/webhook</string>
   <key>started</key>
-  <string>https://setup-manager-hud.<your-subdomain>.workers.dev/webhook</string>
+  <string>https://setupmanagerhud.<your-subdomain>.workers.dev/webhook</string>
 </dict>
 ```
 
@@ -123,7 +123,7 @@ Setup Manager will POST enrollment events to this endpoint. They'll appear on th
 You can test without Setup Manager by sending a sample webhook:
 
 ```bash
-curl -X POST https://setup-manager-hud.<your-subdomain>.workers.dev/webhook \
+curl -X POST https://setupmanagerhud.<your-subdomain>.workers.dev/webhook \
   -H "Content-Type: application/json" \
   -d '{
     "name": "Started",
@@ -221,14 +221,14 @@ This is critical - without this, Setup Manager devices won't be able to POST enr
 **Dashboard (should require login):**
 ```bash
 # This should redirect to a Cloudflare Access login page
-curl -I https://setup-manager-hud.<your-subdomain>.workers.dev
+curl -I https://setupmanagerhud.<your-subdomain>.workers.dev
 # Expected: 302 redirect to <your-team>.cloudflareaccess.com
 ```
 
 **Webhook (should pass through without auth):**
 ```bash
 # This should return 200 - no login required
-curl -X POST https://setup-manager-hud.<your-subdomain>.workers.dev/webhook \
+curl -X POST https://setupmanagerhud.<your-subdomain>.workers.dev/webhook \
   -H "Content-Type: application/json" \
   -d '{"name":"Started","event":"com.jamf.setupmanager.started","timestamp":"2025-01-01T00:00:00Z","started":"2025-01-01T00:00:00Z","modelName":"Test Mac","modelIdentifier":"Mac15,3","macOSBuild":"24A335","macOSVersion":"15.0","serialNumber":"TEST001","setupManagerVersion":"2.0.0"}'
 # Expected: 200 OK
@@ -315,14 +315,14 @@ The included test script generates 140 realistic webhook events (70 started + 70
 
 ```bash
 # Replace with your actual Worker URL
-WORKER_URL=https://setup-manager-hud.<your-subdomain>.workers.dev \
+WORKER_URL=https://setupmanagerhud.<your-subdomain>.workers.dev \
   node scripts/send-dummy-events.js
 ```
 
 If you have a `WEBHOOK_SECRET` configured on your Worker, pass it along:
 
 ```bash
-WORKER_URL=https://setup-manager-hud.<your-subdomain>.workers.dev \
+WORKER_URL=https://setupmanagerhud.<your-subdomain>.workers.dev \
   WEBHOOK_SECRET=your-secret-here \
   node scripts/send-dummy-events.js
 ```
