@@ -12,6 +12,8 @@ interface Env {
   DASHBOARD_ROOM: DurableObjectNamespace;
   WEBHOOK_SECRET?: string;
   ASSETS?: Fetcher;
+  CF_ACCESS_AUD?: string;
+  CF_ACCESS_TEAM_DOMAIN?: string;
 }
 
 const SECURITY_HEADERS: Record<string, string> = {
@@ -86,6 +88,111 @@ async function timingSafeEqual(a: string, b: string): Promise<boolean> {
     diff |= bufA[i] ^ bufB[i];
   }
   return diff === 0;
+}
+
+/**
+ * Cloudflare Access JWT validation
+ * Verifies the CF-Access-Jwt-Assertion header against the configured
+ * audience (aud) and team domain JWKs endpoint.
+ * Returns null if valid, or a Response with an error if invalid.
+ */
+async function validateAccessJwt(
+  request: Request,
+  env: Env,
+): Promise<Response | null> {
+  const aud = env.CF_ACCESS_AUD;
+  const teamDomain = env.CF_ACCESS_TEAM_DOMAIN;
+
+  // If not configured, skip validation
+  if (!aud || !teamDomain) return null;
+
+  const jwt = request.headers.get("Cf-Access-Jwt-Assertion");
+  if (!jwt) {
+    return new Response("Unauthorized: missing Access token", { status: 403 });
+  }
+
+  try {
+    // Decode header and payload without verification first
+    const parts = jwt.split(".");
+    if (parts.length !== 3) {
+      return new Response("Unauthorized: malformed token", { status: 403 });
+    }
+
+    const headerJson = JSON.parse(atob(parts[0].replace(/-/g, "+").replace(/_/g, "/")));
+    const payloadJson = JSON.parse(atob(parts[1].replace(/-/g, "+").replace(/_/g, "/")));
+
+    // Validate audience
+    if (
+      !payloadJson.aud ||
+      !Array.isArray(payloadJson.aud) ||
+      !payloadJson.aud.includes(aud)
+    ) {
+      return new Response("Unauthorized: invalid audience", { status: 403 });
+    }
+
+    // Validate expiration
+    const now = Math.floor(Date.now() / 1000);
+    if (payloadJson.exp && payloadJson.exp < now) {
+      return new Response("Unauthorized: token expired", { status: 403 });
+    }
+
+    // Validate issuer
+    const expectedIssuer = `https://${teamDomain}`;
+    if (payloadJson.iss !== expectedIssuer) {
+      return new Response("Unauthorized: invalid issuer", { status: 403 });
+    }
+
+    // Fetch JWKs and verify signature
+    const certsUrl = `https://${teamDomain}/cdn-cgi/access/certs`;
+    const certsResponse = await fetch(certsUrl);
+    if (!certsResponse.ok) {
+      console.error(`Failed to fetch Access certs: ${certsResponse.status}`);
+      return new Response("Internal error: unable to verify token", { status: 500 });
+    }
+
+    const certs = (await certsResponse.json()) as {
+      keys: JsonWebKey[];
+      public_certs: { kid: string; cert: string }[];
+    };
+
+    // Find the matching key
+    const kid = headerJson.kid;
+    const jwk = certs.keys.find((k: JsonWebKey & { kid?: string }) => k.kid === kid);
+    if (!jwk) {
+      return new Response("Unauthorized: no matching key", { status: 403 });
+    }
+
+    // Import the key and verify the signature
+    const key = await crypto.subtle.importKey(
+      "jwk",
+      jwk,
+      { name: "RSASSA-PKCS1-v1_5", hash: "SHA-256" },
+      false,
+      ["verify"],
+    );
+
+    const signedContent = new TextEncoder().encode(`${parts[0]}.${parts[1]}`);
+    const signature = Uint8Array.from(
+      atob(parts[2].replace(/-/g, "+").replace(/_/g, "/")),
+      (c) => c.charCodeAt(0),
+    );
+
+    const valid = await crypto.subtle.verify(
+      "RSASSA-PKCS1-v1_5",
+      key,
+      signature,
+      signedContent,
+    );
+
+    if (!valid) {
+      return new Response("Unauthorized: invalid signature", { status: 403 });
+    }
+
+    return null; // Valid
+  } catch (err) {
+    console.error("Access JWT validation error:", err);
+    return new Response("Unauthorized: token validation failed", { status: 403 });
+  }
 }
 
 /** Maximum webhook payload size in bytes (8 KB) */
@@ -307,9 +414,15 @@ export default {
       return new Response(null, { headers: getCorsHeaders(request) });
     }
 
+    // Webhook endpoint is always open for devices — no Access check
     if (url.pathname === "/webhook" && request.method === "POST") {
       return handleWebhook(request, env);
     }
+
+    // All other routes require Cloudflare Access JWT (if configured)
+    const accessDenied = await validateAccessJwt(request, env);
+    if (accessDenied) return accessDenied;
+
     if (url.pathname === "/api/events" && request.method === "GET") {
       return handleEvents(request, env);
     }

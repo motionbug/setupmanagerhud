@@ -16,7 +16,7 @@ Setup Manager sends webhook events during macOS device provisioning. This dashbo
 - **Charts trends** - events over time, actions breakdown
 - **Filters and searches** - by event type, model, macOS version, text search
 - **Works in light and dark mode**
-- **Secured by Cloudflare Access** - only authorized users can view the dashboard; the webhook endpoint stays open for devices
+- **Can be secured by Cloudflare Access** - only authorized users can view the dashboard; the webhook endpoint stays open for devices
 
 ## Quick Start
 
@@ -29,8 +29,9 @@ Click the deploy button above. It will:
 2. Set up a GitHub Actions workflow
 3. Deploy to your Cloudflare account
 
-After deployment, you'll need to:
-- Create a KV namespace (see [Configuration](#kv-namespace-required))
+> **Tip:** During setup, you'll be asked for a project name. This becomes your Worker URL (`<project-name>.<your-subdomain>.workers.dev`). You can name it anything you like — `setupmanagerhud`, `enrollment-dashboard`, or even something obscure like `x7k9-internal`. A less obvious name makes the URL harder to guess, which is fine as long as it's a valid URL (lowercase letters, numbers, and hyphens).
+
+After clicking Deploy, the KV namespace is created automatically through the Cloudflare setup wizard. You'll still want to:
 - Secure the dashboard (see [Securing the Dashboard](#securing-the-dashboard))
 
 ### Option 2: Manual Deploy
@@ -67,15 +68,27 @@ Your dashboard is now live at `https://setupmanagerhud.<your-subdomain>.workers.
 
 **Next step:** [Secure the dashboard](#securing-the-dashboard) so only you can access it.
 
-### Option 3: GitHub Actions (Auto-Deploy on Push)
+### Option 3: GitHub Actions
+
+This repo includes a GitHub Actions workflow that builds and deploys to Cloudflare Workers. It runs manually from the Actions tab — useful if you prefer deploying from GitHub instead of the command line.
+
+GitHub Actions needs permission to deploy to your Cloudflare account. This is done through two repository secrets:
 
 1. Fork this repo
-2. In your fork, go to **Settings -> Secrets and variables -> Actions**
-3. Add these repository secrets:
-   - `CLOUDFLARE_API_TOKEN` - [Create an API token](https://dash.cloudflare.com/profile/api-tokens) with "Edit Cloudflare Workers" permissions
-   - `CLOUDFLARE_ACCOUNT_ID` - Found on your Cloudflare dashboard sidebar
-4. Create your KV namespace and update `wrangler.toml` (see steps 4-5 above)
-5. Push to `main` - the workflow deploys automatically
+2. **Create a Cloudflare API token** — this is what allows GitHub to deploy on your behalf:
+   - Go to [Cloudflare API Tokens](https://dash.cloudflare.com/profile/api-tokens)
+   - Click **Create Token**
+   - Use the **Edit Cloudflare Workers** template
+   - Save the generated token
+3. **Find your Cloudflare Account ID:**
+   - Go to the [Cloudflare dashboard](https://dash.cloudflare.com)
+   - Your Account ID is shown in the right sidebar on the overview page
+4. **Add both as repository secrets** in your fork:
+   - Go to **Settings → Secrets and variables → Actions**
+   - Add `CLOUDFLARE_API_TOKEN` with the token from step 2
+   - Add `CLOUDFLARE_ACCOUNT_ID` with the ID from step 3
+5. Create your KV namespace and update `wrangler.toml` (see steps 4–5 in Option 2)
+6. Go to the **Actions** tab in your fork, select **Deploy to Cloudflare Workers**, and click **Run workflow**
 
 ## Configuration
 
@@ -87,13 +100,15 @@ Setup Manager HUD stores webhook events in [Cloudflare Workers KV](https://devel
 npx wrangler kv namespace create WEBHOOKS
 ```
 
-Copy the ID from the output and paste it into `wrangler.toml`:
+Copy the ID from the output, then open `wrangler.toml` and **uncomment** the KV lines and paste your ID:
 
 ```toml
 [[kv_namespaces]]
 binding = "WEBHOOKS"
 id = "paste-your-id-here"
 ```
+
+These lines are commented out by default so that first-time deploys don't fail.
 
 ### Connecting Setup Manager
 
@@ -140,9 +155,9 @@ curl -X POST https://setupmanagerhud.<your-subdomain>.workers.dev/webhook \
 
 ## Securing the Dashboard
 
-The dashboard displays device enrollment data that you probably don't want public. **Cloudflare Access** lets you add authentication in front of the dashboard without changing any code.
+The dashboard displays device enrollment data that you probably don't want public. **Cloudflare Access** adds authentication in front of the dashboard, and the Worker validates the Access JWT to ensure requests aren't bypassed.
 
-Cloudflare Access is free for up to 50 users. It sits at Cloudflare's edge - before requests even reach your Worker - so there are zero code changes needed.
+Cloudflare Access is free for up to 50 users. It sits at Cloudflare's edge — before requests even reach your Worker. Setup takes about 5 minutes.
 
 ### How It Works
 
@@ -181,7 +196,7 @@ Device -> POST /webhook (bypasses Access) -> Worker -> KV
 3. Configure:
    - **Application name:** `Setup Manager HUD`
    - **Session duration:** `24 hours` (or your preference)
-   - **Application domain:** `setup-manager-hud.<your-subdomain>.workers.dev`
+   - **Application domain:** `setupmanagerhud.<your-subdomain>.workers.dev`
      - If using a custom domain, enter that instead
 4. Click **Next** to configure the access policy
 
@@ -200,7 +215,36 @@ Device -> POST /webhook (bypasses Access) -> Worker -> KV
 
 4. Click **Next**, then **Add application**
 
-#### 5. Create a Bypass Policy for the Webhook Endpoint
+#### 5. Enable JWT Validation in Your Worker
+
+After creating the Access application, Cloudflare shows you two values:
+
+- **Audience (aud)** — a long hex string that identifies your Access application
+- **JWKs URL** — looks like `https://<your-team>.cloudflareaccess.com/cdn-cgi/access/certs`
+
+Your Worker uses these to verify that incoming requests have a valid Cloudflare Access token. Without this step, someone could bypass the Access login page and hit your Worker directly.
+
+Open `wrangler.toml` and **uncomment** the `[vars]` section, then fill in your values:
+
+```toml
+[vars]
+CF_ACCESS_AUD = "paste-your-audience-tag-here"
+CF_ACCESS_TEAM_DOMAIN = "your-team.cloudflareaccess.com"
+```
+
+These lines are commented out by default so that deploys work without Cloudflare Access configured.
+
+The team domain is the hostname from the JWKs URL (everything between `https://` and `/cdn-cgi/...`).
+
+Redeploy after saving:
+
+```bash
+npm run deploy
+```
+
+> **Note:** If these values are left empty, the Worker skips JWT validation. The dashboard will still work but won't verify that requests came through Cloudflare Access.
+
+#### 6. Create a Bypass Policy for the Webhook Endpoint
 
 This is critical - without this, Setup Manager devices won't be able to POST enrollment data.
 
@@ -215,7 +259,7 @@ This is critical - without this, Setup Manager devices won't be able to POST enr
 5. Save the policy
 6. **Make sure this Bypass policy is listed ABOVE the Allow policy** - drag to reorder if needed (Bypass and Service Auth policies are evaluated first)
 
-#### 6. Verify It Works
+#### 7. Verify It Works
 
 **Dashboard (should require login):**
 ```bash
