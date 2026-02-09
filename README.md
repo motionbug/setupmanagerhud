@@ -31,7 +31,9 @@ Click the deploy button above. It will:
 
 > **Tip:** During setup, you'll be asked for a project name. This becomes your Worker URL (`<project-name>.<your-subdomain>.workers.dev`). You can name it anything you like — `setupmanagerhud`, `enrollment-dashboard`, or even something obscure like `x7k9-internal`. A less obvious name makes the URL harder to guess, which is fine as long as it's a valid URL (lowercase letters, numbers, and hyphens).
 
-After clicking Deploy, the KV namespace is created automatically through the Cloudflare setup wizard. You'll still want to:
+After clicking Deploy, you'll need to:
+- Create a KV namespace and bind it to your Worker (see [Configuration](#kv-namespace-required))
+- Redeploy so the Worker can access the KV store
 - Secure the dashboard (see [Securing the Dashboard](#securing-the-dashboard))
 
 ### Option 2: Manual Deploy
@@ -94,13 +96,17 @@ GitHub Actions needs permission to deploy to your Cloudflare account. This is do
 
 ### KV Namespace (Required)
 
-Setup Manager HUD stores webhook events in [Cloudflare Workers KV](https://developers.cloudflare.com/kv/). You must create a namespace:
+Setup Manager HUD stores webhook events in [Cloudflare Workers KV](https://developers.cloudflare.com/kv/). You need to create a namespace and connect it to your Worker.
+
+**1. Create the namespace:**
 
 ```bash
 npx wrangler kv namespace create WEBHOOKS
 ```
 
-Copy the ID from the output, then open `wrangler.toml` and **uncomment** the KV lines and paste your ID:
+This outputs a namespace ID — copy it.
+
+**2. Bind it to your Worker** by opening `wrangler.toml` and **uncommenting** the KV lines, then pasting your ID:
 
 ```toml
 [[kv_namespaces]]
@@ -109,6 +115,14 @@ id = "paste-your-id-here"
 ```
 
 These lines are commented out by default so that first-time deploys don't fail.
+
+**3. Redeploy** so the Worker picks up the new binding:
+
+```bash
+npm run deploy
+```
+
+Without this step, the Worker has no access to KV and will return a 500 error when receiving webhooks.
 
 ### Connecting Setup Manager
 
