@@ -32,9 +32,8 @@ Click the deploy button above. It will:
 > **Tip:** During setup, you'll be asked for a project name. This becomes your Worker URL (`<project-name>.<your-subdomain>.workers.dev`). You can name it anything you like — `setupmanagerhud`, `enrollment-dashboard`, or even something obscure like `x7k9-internal`. A less obvious name makes the URL harder to guess, which is fine as long as it's a valid URL (lowercase letters, numbers, and hyphens).
 
 After clicking Deploy, you'll need to:
-- Create a KV namespace and bind it to your Worker (see [Configuration](#kv-namespace-required))
-- Redeploy so the Worker can access the KV store
-- Secure the dashboard (see [Securing the Dashboard](#securing-the-dashboard))
+- Create a KV namespace and bind it to your Worker (see [KV Namespace](#kv-namespace-required)) — no CLI needed, this is done entirely in the Cloudflare dashboard
+- Optionally [secure the dashboard](#securing-the-dashboard) with Cloudflare Access
 
 ### Option 2: Manual Deploy
 
@@ -59,7 +58,7 @@ npx wrangler kv namespace create WEBHOOKS
 # -> Copy the ID from the output
 
 # 5. Paste the KV namespace ID into wrangler.toml
-#    Find the [[kv_namespaces]] section and set:
+#    Uncomment the [[kv_namespaces]] section and set:
 #    id = "your-namespace-id-here"
 
 # 6. Deploy
@@ -89,14 +88,44 @@ GitHub Actions needs permission to deploy to your Cloudflare account. This is do
    - Go to **Settings → Secrets and variables → Actions**
    - Add `CLOUDFLARE_API_TOKEN` with the token from step 2
    - Add `CLOUDFLARE_ACCOUNT_ID` with the ID from step 3
-5. Create your KV namespace and update `wrangler.toml` (see steps 4–5 in Option 2)
+5. Create your KV namespace and bind it to your Worker (see [KV Namespace](#kv-namespace-required) — use Option B for CLI)
 6. Go to the **Actions** tab in your fork, select **Deploy to Cloudflare Workers**, and click **Run workflow**
 
 ## Configuration
 
 ### KV Namespace (Required)
 
-Setup Manager HUD stores webhook events in [Cloudflare Workers KV](https://developers.cloudflare.com/kv/). You need to create a namespace and connect it to your Worker.
+Setup Manager HUD stores webhook events in [Cloudflare Workers KV](https://developers.cloudflare.com/kv/). You need to create a namespace and connect it to your Worker. Without this, the Worker will return a 500 error when receiving webhooks.
+
+#### Option A: Cloudflare Dashboard (recommended for Deploy Button users)
+
+No CLI or code changes needed — everything is done in the browser.
+
+**1. Create the namespace:**
+
+1. Log in to the [Cloudflare dashboard](https://dash.cloudflare.com)
+2. Go to [**Workers & Pages → KV**](https://dash.cloudflare.com/?to=/:account/workers/kv/namespaces) in the left sidebar
+3. Click **Create a namespace**
+4. Name it `WEBHOOKS` (or any name you prefer)
+5. Click **Add**
+
+**2. Bind it to your Worker:**
+
+1. Go to [**Workers & Pages**](https://dash.cloudflare.com/?to=/:account/workers) and click on your Worker
+2. Go to **Settings → Bindings**
+3. Click **Add binding**
+4. Select **KV Namespace**
+5. Set the **variable name** to `WEBHOOKS` — this must be exactly `WEBHOOKS` as the code references `env.WEBHOOKS`
+6. Select the namespace you just created from the dropdown
+7. Click **Save** and **Deploy**
+
+Your Worker now has access to KV. No redeploy from GitHub is needed — the binding takes effect immediately.
+
+> **Note:** If you later redeploy from your fork (via GitHub Actions), the deploy will use `wrangler.toml` which has the KV binding commented out. This will **remove the dashboard-set binding**. To avoid this, either re-bind via the dashboard after each deploy, or switch to the CLI method below for a permanent setup.
+
+#### Option B: CLI with Wrangler
+
+If you prefer the command line, or want the binding to persist across redeploys:
 
 **1. Create the namespace:**
 
@@ -121,8 +150,6 @@ These lines are commented out by default so that first-time deploys don't fail.
 ```bash
 npm run deploy
 ```
-
-Without this step, the Worker has no access to KV and will return a 500 error when receiving webhooks.
 
 ### Connecting Setup Manager
 
