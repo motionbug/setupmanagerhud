@@ -318,23 +318,30 @@ curl -X POST https://setupmanagerhud.<your-subdomain>.workers.dev/webhook \
 # Expected: 200 OK
 ```
 
-### Optional: Webhook Token Validation
+### Optional: Webhook Token Validation (Coming Soon)
 
-For additional security on the webhook endpoint, you can add a shared secret so only your Setup Manager instances can POST events. This is **not required** but recommended for production.
+> **🚧 Coming soon:** Webhook token validation is built into the Worker and ready to go, but [Setup Manager](https://github.com/nicknameislink/setupmanager) does not yet support sending an `Authorization` header with webhook requests. Once Setup Manager adds support for authenticated webhooks, you'll be able to enable this feature with no code changes — just set the secret and you're done.
 
-Add a secret to your Worker:
+This feature adds a shared secret between Setup Manager and your Worker, so only your devices can POST enrollment events. It prevents unauthorized payloads from appearing on your dashboard.
+
+**How it will work once Setup Manager supports it:**
+
+**1.** Add a secret to your Worker:
 
 ```bash
 npx wrangler secret put WEBHOOK_SECRET
 # Enter a random string when prompted
 ```
 
-Then configure Setup Manager to send this token in the `Authorization` header:
+**2.** Configure Setup Manager to send the same secret in the `Authorization` header (details will depend on Setup Manager's implementation):
+
 ```
 Authorization: Bearer <your-secret>
 ```
 
-The Worker validates this header on `/webhook` requests if the `WEBHOOK_SECRET` environment variable is set. If it's not set, the webhook accepts all valid payloads (the default behavior).
+**3.** That's it — the Worker already validates this header on `/webhook` requests when `WEBHOOK_SECRET` is set. If it's not set, the webhook accepts all valid payloads (the current default behavior).
+
+> **Tip:** In the meantime, you can use [rate limiting](#optional-rate-limiting-the-webhook-endpoint) to reduce the risk of abuse on the open webhook endpoint.
 
 ### Optional: Rate Limiting the Webhook Endpoint
 
