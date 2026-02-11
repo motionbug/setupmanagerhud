@@ -20,11 +20,16 @@ Setup Manager sends webhook events during macOS device provisioning. This dashbo
 
 ## Quick Start
 
+**You do not have to fork this repo! You can deploy it directly to your Cloudflare account.**
+---
 ### Option 1: Deploy Button (Fastest)
 
 [![Deploy to Cloudflare Workers](https://deploy.workers.cloudflare.com/button)](https://deploy.workers.cloudflare.com/?url=https://github.com/motionbug/setupmanagerhud)
 
-Click the deploy button above. It will:
+
+⬆️ Click the deploy button above. ⬆️ 
+
+**It will:**
 1. Fork this repo to your GitHub account
 2. Set up a GitHub Actions workflow
 3. Deploy to your Cloudflare account
