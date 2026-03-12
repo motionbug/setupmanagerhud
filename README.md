@@ -78,7 +78,14 @@ Your dashboard is now live at `https://setupmanagerhud.<your-subdomain>.workers.
 
 This repo includes a GitHub Actions workflow that builds and deploys to Cloudflare Workers. It runs manually from the Actions tab — useful if you prefer deploying from GitHub instead of the command line.
 
-GitHub Actions needs permission to deploy to your Cloudflare account. This is done through two repository secrets:
+GitHub Actions only handles the build and deploy. You still need to configure the
+Worker itself with:
+
+- a `WEBHOOKS` KV binding
+- a `WEBHOOK_TOKEN` secret for `/webhook`
+- optionally `CF_ACCESS_AUD` and `CF_ACCESS_TEAM_DOMAIN` for dashboard auth
+
+The workflow needs permission to deploy to your Cloudflare account. This is done through two repository secrets:
 
 1. Fork this repo
 2. **Create a Cloudflare API token** — this is what allows GitHub to deploy on your behalf:
@@ -93,8 +100,29 @@ GitHub Actions needs permission to deploy to your Cloudflare account. This is do
    - Go to **Settings → Secrets and variables → Actions**
    - Add `CLOUDFLARE_API_TOKEN` with the token from step 2
    - Add `CLOUDFLARE_ACCOUNT_ID` with the ID from step 3
-5. Create your KV namespace and bind it to your Worker (see [KV Namespace](#kv-namespace-required) — use Option B for CLI)
-6. Go to the **Actions** tab in your fork, select **Deploy to Cloudflare Workers**, and click **Run workflow**
+5. Create your KV namespace and bind it in code so GitHub deploys keep it:
+   - See [KV Namespace](#kv-namespace-required), **Option B: CLI with Wrangler**
+   - Uncomment the `[[kv_namespaces]]` block in `wrangler.toml`
+   - Paste your real namespace ID and commit that change to your fork before running the workflow
+6. Run the workflow once:
+   - Go to the **Actions** tab in your fork
+   - Select **Deploy to Cloudflare Workers**
+   - Click **Run workflow**
+7. After the Worker exists, add the webhook token to the deployed Worker:
+   - Go to **Workers & Pages → your Worker → Settings → Variables and Secrets**
+   - Add a **Secret** named `WEBHOOK_TOKEN`
+   - Set it to the same shared token you will use in Setup Manager
+   - Click **Deploy**
+8. If you are protecting the dashboard with Cloudflare Access, also set:
+   - `CF_ACCESS_AUD`
+   - `CF_ACCESS_TEAM_DOMAIN`
+9. Configure Setup Manager with the same webhook token using the `dict` format shown in [Connecting Setup Manager](#connecting-setup-manager)
+10. Verify the deployment:
+   - `POST /webhook` with the correct `Authorization` token should return `200`
+   - `POST /webhook` without the token should return `401`
+   - If `WEBHOOK_TOKEN` is missing, `/webhook` should return `503`
+
+> **Important:** GitHub repository secrets such as `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID` are only for the workflow. They do **not** become Worker runtime secrets automatically.
 
 ## Configuration
 
