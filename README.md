@@ -16,7 +16,7 @@ Setup Manager sends webhook events during macOS device provisioning. This dashbo
 - **Charts trends** - events over time, actions breakdown
 - **Filters and searches** - by event type, model, macOS version, text search
 - **Works in light and dark mode**
-- **Can be secured by Cloudflare Access** - only authorized users can view the dashboard; the webhook endpoint stays open for devices
+- **Can be secured by Cloudflare Access** - only authorized users can view the dashboard; devices send webhook events with a shared token
 
 ## Quick Start
 
@@ -158,15 +158,27 @@ npm run deploy
 
 ### Connecting Setup Manager
 
-In your Setup Manager configuration, set the webhook URL to:
+`/webhook` now requires token authentication. In your Setup Manager configuration,
+use a `dict` for each webhook and set the same token value that you configure on
+the Worker:
 
 ```
 <key>webhooks</key>
 <dict>
   <key>finished</key>
-  <string>https://setupmanagerhud.<your-subdomain>.workers.dev/webhook</string>
+  <dict>
+    <key>token</key>
+    <string>your-shared-webhook-token</string>
+    <key>url</key>
+    <string>https://setupmanagerhud.<your-subdomain>.workers.dev/webhook</string>
+  </dict>
   <key>started</key>
-  <string>https://setupmanagerhud.<your-subdomain>.workers.dev/webhook</string>
+  <dict>
+    <key>token</key>
+    <string>your-shared-webhook-token</string>
+    <key>url</key>
+    <string>https://setupmanagerhud.<your-subdomain>.workers.dev/webhook</string>
+  </dict>
 </dict>
 ```
 
@@ -174,9 +186,9 @@ Remember when either the started or finished key is missing, no webhook will be 
 
 
 
-Setup Manager will POST enrollment events to this endpoint. They'll appear on the dashboard in real-time.
-
-> **Note:** The `/webhook` endpoint is excluded from authentication (see below) so devices can POST without credentials.
+Setup Manager will POST enrollment events to this endpoint with an `Authorization`
+header whose value exactly matches the configured token. Events appear on the
+dashboard in real time after token auth and payload validation succeed.
 
 ### Test with a Sample Webhook
 
@@ -184,6 +196,7 @@ You can test without Setup Manager by sending a sample webhook:
 
 ```bash
 curl -X POST https://setupmanagerhud.<your-subdomain>.workers.dev/webhook \
+  -H "Authorization: your-shared-webhook-token" \
   -H "Content-Type: application/json" \
   -d '{
     "name": "Started",
@@ -209,11 +222,11 @@ Cloudflare Access is free for up to 50 users. It sits at Cloudflare's edge — b
 
 ```
 User -> Cloudflare Access (login gate) -> Dashboard (Worker)
-Device -> POST /webhook (bypasses Access) -> Worker -> KV
+Device -> POST /webhook + Authorization token -> Worker -> KV
 ```
 
 - **Dashboard visitors** must authenticate before they can see anything
-- **Setup Manager devices** POST to `/webhook` which bypasses authentication entirely
+- **Setup Manager devices** POST to `/webhook` with a shared token in the `Authorization` header
 - **WebSocket connections** to `/ws` are also protected - only authenticated users can connect
 
 ### Step-by-Step Setup
@@ -314,43 +327,42 @@ curl -I https://setupmanagerhud.<your-subdomain>.workers.dev
 # Expected: 302 redirect to <your-team>.cloudflareaccess.com
 ```
 
-**Webhook (should pass through without auth):**
+**Webhook (should succeed with the configured token):**
 ```bash
-# This should return 200 - no login required
+# This should return 200 with the configured webhook token
 curl -X POST https://setupmanagerhud.<your-subdomain>.workers.dev/webhook \
+  -H "Authorization: your-shared-webhook-token" \
   -H "Content-Type: application/json" \
   -d '{"name":"Started","event":"com.jamf.setupmanager.started","timestamp":"2025-01-01T00:00:00Z","started":"2025-01-01T00:00:00Z","modelName":"Test Mac","modelIdentifier":"Mac15,3","macOSBuild":"24A335","macOSVersion":"15.0","serialNumber":"TEST001","setupManagerVersion":"2.0.0"}'
 # Expected: 200 OK
 ```
 
-### Optional: Webhook Token Validation (Coming Soon)
+### Webhook Token Authentication
 
-> **🚧 Coming soon:** Webhook token validation is built into the Worker and ready to go, but [Setup Manager](https://github.com/nicknameislink/setupmanager) does not yet support sending an `Authorization` header with webhook requests. Once Setup Manager adds support for authenticated webhooks, you'll be able to enable this feature with no code changes — just set the secret and you're done.
+Setup Manager now supports token-authenticated webhooks. This Worker is
+secure-by-default: `/webhook` rejects requests unless `WEBHOOK_TOKEN` is
+configured and the incoming `Authorization` header exactly matches it.
 
-This feature adds a shared secret between Setup Manager and your Worker, so only your devices can POST enrollment events. It prevents unauthorized payloads from appearing on your dashboard.
-
-**How it will work once Setup Manager supports it:**
-
-**1.** Add a secret to your Worker:
+**1.** Add the token to your Worker:
 
 ```bash
-npx wrangler secret put WEBHOOK_SECRET
+npx wrangler secret put WEBHOOK_TOKEN
 # Enter a random string when prompted
 ```
 
-**2.** Configure Setup Manager to send the same secret in the `Authorization` header (details will depend on Setup Manager's implementation):
+**2.** Configure Setup Manager to send the same token in the `Authorization` header:
 
 ```
-Authorization: Bearer <your-secret>
+Authorization: <your-token>
 ```
 
-**3.** That's it — the Worker already validates this header on `/webhook` requests when `WEBHOOK_SECRET` is set. If it's not set, the webhook accepts all valid payloads (the current default behavior).
+**3.** If `WEBHOOK_TOKEN` is missing from the Worker, `/webhook` fails closed with `503 Service Unavailable` so the endpoint never silently falls back to accepting anonymous events.
 
-> **Tip:** In the meantime, you can use [rate limiting](#optional-rate-limiting-the-webhook-endpoint) to reduce the risk of abuse on the open webhook endpoint.
+> **Tip:** Keep [rate limiting](#optional-rate-limiting-the-webhook-endpoint) enabled as defense in depth. Token auth protects integrity; rate limiting still helps with abuse and accidental floods.
 
 ### Optional: Rate Limiting the Webhook Endpoint
 
-The `/webhook` endpoint is open to the internet so devices can POST enrollment events. To prevent abuse (flooding with fake events, exhausting KV storage), you can add a Cloudflare WAF rate limiting rule. This is configured entirely in the Cloudflare dashboard — no code changes required.
+The `/webhook` endpoint is still internet reachable so devices can POST enrollment events, but it now requires a valid token. To reduce abuse, credential spraying, or accidental floods, add a Cloudflare WAF rate limiting rule as defense in depth. This is configured entirely in the Cloudflare dashboard — no code changes required.
 
 #### Setup
 
@@ -385,7 +397,7 @@ If your devices enroll behind a shared NAT or VPN gateway, choose a higher limit
 | `/api/events` | ✅ Cloudflare Access | Only authorized users |
 | `/api/stats` | ✅ Cloudflare Access | Only authorized users |
 | `/api/health` | ✅ Cloudflare Access | Only authorized users |
-| `/webhook` | ❌ Bypassed | Any device (Setup Manager) |
+| `/webhook` | ✅ Shared token | Setup Manager devices with the configured token |
 
 ## Local Development
 
@@ -398,6 +410,12 @@ npm run dev:worker
 ```
 
 For local Worker development, create a `.dev.vars` file (see `.dev.vars.example`).
+
+At minimum, include:
+
+```bash
+WEBHOOK_TOKEN=your-local-test-token
+```
 
 > **Note:** Cloudflare Access is not active during local development. The dashboard is unprotected when running locally - this is expected and convenient for development.
 
@@ -415,11 +433,11 @@ WORKER_URL=https://setupmanagerhud.<your-subdomain>.workers.dev \
   node scripts/send-dummy-events.js
 ```
 
-If you have a `WEBHOOK_SECRET` configured on your Worker, pass it along:
+Pass the same token used by your Worker:
 
 ```bash
 WORKER_URL=https://setupmanagerhud.<your-subdomain>.workers.dev \
-  WEBHOOK_SECRET=your-secret-here \
+  WEBHOOK_TOKEN=your-token-here \
   node scripts/send-dummy-events.js
 ```
 

@@ -8,9 +8,9 @@
  * Usage:
  *   WORKER_URL=https://your-worker.your-subdomain.workers.dev node scripts/send-dummy-events.js
  *
- * If WEBHOOK_SECRET is set on your Worker, pass it as an env variable:
+ * If WEBHOOK_TOKEN is set on your Worker, pass it as an env variable:
  *   WORKER_URL=https://your-worker.your-subdomain.workers.dev \
- *   WEBHOOK_SECRET=your-secret-here \
+ *   WEBHOOK_TOKEN=your-token-here \
  *   node scripts/send-dummy-events.js
  *
  * What it does:
@@ -28,7 +28,7 @@ if (!WORKER_URL) {
   process.exit(1);
 }
 const WEBHOOK_URL = `${WORKER_URL}/webhook`;
-const WEBHOOK_SECRET = process.env.WEBHOOK_SECRET || '';
+const WEBHOOK_TOKEN = process.env.WEBHOOK_TOKEN || '';
 
 const MODELS = [
   { name: 'MacBook Air', identifier: 'Mac14,2' },
@@ -115,8 +115,8 @@ function buildFinishedPayload(device, startedTime, durationSeconds) {
 
 async function sendPayload(payload) {
   const headers = { 'Content-Type': 'application/json' };
-  if (WEBHOOK_SECRET) {
-    headers['Authorization'] = `Bearer ${WEBHOOK_SECRET}`;
+  if (WEBHOOK_TOKEN) {
+    headers['Authorization'] = WEBHOOK_TOKEN;
   }
 
   const response = await fetch(WEBHOOK_URL, {
