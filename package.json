@@ -11,7 +11,8 @@
     "preview": "vite preview",
     "deploy": "npm run build && npx wrangler deploy",
     "dev:worker": "npx wrangler dev",
-    "typecheck": "tsc --noEmit",
+    "test": "node --experimental-strip-types --test test/**/*.test.ts",
+    "typecheck": "node ./node_modules/typescript/bin/tsc --noEmit",
     "setup": "npx wrangler kv namespace create WEBHOOKS && echo '⚠️  Copy the namespace ID into wrangler.toml'"
   },
   "engines": {

@@ -1,4 +1,4 @@
-import type { StoredEvent } from "./types";
+import type { StoredEvent } from "./types.ts";
 
 interface Env {
   WEBHOOKS: KVNamespace;

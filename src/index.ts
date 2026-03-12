@@ -1,16 +1,16 @@
-import { DashboardRoom } from "./DashboardRoom";
+import { DashboardRoom } from "./DashboardRoom.ts";
 import {
   validateWebhookPayload,
   type SetupManagerWebhook,
   type StoredEvent,
-} from "./types";
+} from "./types.ts";
 
 export { DashboardRoom };
 
-interface Env {
+export interface Env {
   WEBHOOKS: KVNamespace;
   DASHBOARD_ROOM: DurableObjectNamespace;
-  WEBHOOK_SECRET?: string;
+  WEBHOOK_TOKEN?: string;
   ASSETS?: Fetcher;
   CF_ACCESS_AUD?: string;
   CF_ACCESS_TEAM_DOMAIN?: string;
@@ -198,8 +198,28 @@ async function validateAccessJwt(
 /** Maximum webhook payload size in bytes (8 KB) */
 const MAX_WEBHOOK_PAYLOAD_SIZE = 8192;
 
+async function validateWebhookAuth(
+  request: Request,
+  env: Env,
+): Promise<Response | null> {
+  const webhookToken = env.WEBHOOK_TOKEN?.trim();
+  if (!webhookToken) {
+    return json({ error: "Webhook authentication is not configured" }, 503, request);
+  }
+
+  const authHeader = request.headers.get("Authorization")?.trim();
+  if (!authHeader || !(await timingSafeEqual(authHeader, webhookToken))) {
+    return json({ error: "Unauthorized" }, 401, request);
+  }
+
+  return null;
+}
+
 // POST /webhook
-async function handleWebhook(request: Request, env: Env): Promise<Response> {
+export async function handleWebhook(request: Request, env: Env): Promise<Response> {
+  const authError = await validateWebhookAuth(request, env);
+  if (authError) return authError;
+
   // Reject oversized payloads before parsing
   const contentLength = parseInt(request.headers.get("Content-Length") || "0", 10);
   if (contentLength > MAX_WEBHOOK_PAYLOAD_SIZE) {
@@ -210,19 +230,6 @@ async function handleWebhook(request: Request, env: Env): Promise<Response> {
   const contentType = request.headers.get("Content-Type");
   if (!contentType || !contentType.includes("application/json")) {
     return json({ error: "Content-Type must be application/json" }, 415, request);
-  }
-
-  // Optional: validate webhook token if WEBHOOK_SECRET is set
-  const webhookSecret = env.WEBHOOK_SECRET;
-  if (webhookSecret) {
-    const authHeader = request.headers.get("Authorization");
-    const token = authHeader?.startsWith("Bearer ")
-      ? authHeader.slice(7)
-      : null;
-
-    if (!token || !(await timingSafeEqual(token, webhookSecret))) {
-      return json({ error: "Unauthorized" }, 401, request);
-    }
   }
 
   let payload: unknown;
@@ -414,7 +421,7 @@ export default {
       return new Response(null, { headers: getCorsHeaders(request) });
     }
 
-    // Webhook endpoint is always open for devices — no Access check
+    // Webhook endpoint bypasses Cloudflare Access and uses token auth instead
     if (url.pathname === "/webhook" && request.method === "POST") {
       return handleWebhook(request, env);
     }
