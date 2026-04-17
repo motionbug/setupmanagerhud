@@ -66,10 +66,10 @@ Plans:
 **Plans:** 4 plans in 3 waves
 
 Plans:
-- [ ] 03-01-PLAN.md — Type guards, union variant exports, and KV helper foundation (Wave 1)
-- [ ] 03-02-PLAN.md — Consolidate KV fetch in DashboardRoom and Worker (Wave 2)
-- [ ] 03-03-PLAN.md — Replace useEffect stats with useMemo (Wave 2)
-- [ ] 03-04-PLAN.md — Eliminate type casts in all dashboard components (Wave 3)
+- [x] 03-01-PLAN.md — Type guards, union variant exports, and KV helper foundation (Wave 1)
+- [x] 03-02-PLAN.md — Consolidate KV fetch in DashboardRoom and Worker (Wave 2)
+- [x] 03-03-PLAN.md — Replace useEffect stats with useMemo (Wave 2)
+- [x] 03-04-PLAN.md — Eliminate type casts in all dashboard components (Wave 3)
 
 ### Phase 4: CSS Cleanup
 **Goal**: Styles are consolidated, dead selectors removed, design tokens normalized
