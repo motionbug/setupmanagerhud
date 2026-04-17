@@ -473,7 +473,16 @@ export default {
     }
 
     if (env.ASSETS) {
-      return env.ASSETS.fetch(request);
+      const assetResponse = await env.ASSETS.fetch(request);
+      const headers = new Headers(assetResponse.headers);
+      for (const [key, value] of Object.entries(SECURITY_HEADERS)) {
+        headers.set(key, value);
+      }
+      return new Response(assetResponse.body, {
+        status: assetResponse.status,
+        statusText: assetResponse.statusText,
+        headers,
+      });
     }
 
     return new Response("Not Found", { status: 404 });
