@@ -15,7 +15,8 @@ import {
   ArrowUp01Icon,
   ArrowRight01Icon,
 } from "@hugeicons/core-free-icons";
-import type { StoredEvent, WebhookPayload } from "@/types";
+import type { StoredEvent, SetupManagerWebhook } from "@/types";
+import { isFinishedWebhook } from "@/types";
 
 type ThroughputQuality = "good" | "ok" | "slow";
 
@@ -131,10 +132,11 @@ export function EventsTable({ events, maxVisible = 50 }: EventsTableProps) {
             </TableRow>
           ) : (
             visibleEvents.map((event) => {
-              const payload = event.payload as WebhookPayload;
+              const payload = event.payload;
               const isExpanded = expandedRows.has(event.eventId);
               const isStarted = payload.event === "com.jamf.setupmanager.started";
-              const actions = payload.enrollmentActions || [];
+              const isFinished = isFinishedWebhook(payload);
+              const actions = isFinished ? (payload.enrollmentActions || []) : [];
               const failedCount = actions.filter((a) => a.status === "failed").length;
 
               return (
@@ -166,16 +168,20 @@ export function EventsTable({ events, maxVisible = 50 }: EventsTableProps) {
                       {formatTime(payload.started)}
                     </TableCell>
                     <TableCell className="font-mono text-base">
-                      {payload.finished ? formatTime(payload.finished) : "—"}
+                      {isFinished ? formatTime(payload.finished) : "—"}
                     </TableCell>
                     <TableCell className="font-mono text-base">
-                      {formatDuration(payload.duration)}
+                      {isFinished ? formatDuration(payload.duration) : "—"}
                     </TableCell>
                     <TableCell>
-                      <NetworkIndicator
-                        download={payload.downloadThroughput}
-                        upload={payload.uploadThroughput}
-                      />
+                      {isFinished ? (
+                        <NetworkIndicator
+                          download={payload.downloadThroughput}
+                          upload={payload.uploadThroughput}
+                        />
+                      ) : (
+                        <span className="text-muted-foreground">—</span>
+                      )}
                     </TableCell>
                     <TableCell className="font-mono text-base">
                       {payload.serialNumber}
@@ -248,10 +254,14 @@ function NetworkInfo({ upload, download }: { upload?: number; download?: number 
   );
 }
 
-function EventDetail({ payload }: { payload: WebhookPayload }) {
+function EventDetail({ payload }: { payload: SetupManagerWebhook }) {
+  const isFinished = isFinishedWebhook(payload);
+
   return (
     <div className="text-base">
-      <NetworkInfo upload={payload.uploadThroughput} download={payload.downloadThroughput} />
+      {isFinished && (
+        <NetworkInfo upload={payload.uploadThroughput} download={payload.downloadThroughput} />
+      )}
       <div className="grid grid-cols-2 gap-5 text-base md:grid-cols-4">
         <div>
           <p className="text-lg text-muted-foreground">macOS Version</p>
@@ -270,14 +280,14 @@ function EventDetail({ payload }: { payload: WebhookPayload }) {
           <p className="text-[1.65rem] font-semibold leading-tight">v{payload.setupManagerVersion}</p>
         </div>
 
-        {payload.computerName && (
+        {isFinished && payload.computerName && (
           <div>
             <p className="text-lg text-muted-foreground">Computer Name</p>
             <p className="text-[1.65rem] font-semibold leading-tight">{payload.computerName}</p>
           </div>
         )}
 
-        {payload.userEntry && (
+        {isFinished && payload.userEntry && (
           <>
             {payload.userEntry.userID && (
               <div>
@@ -294,7 +304,7 @@ function EventDetail({ payload }: { payload: WebhookPayload }) {
           </>
         )}
 
-        {payload.enrollmentActions && payload.enrollmentActions.length > 0 && (
+        {isFinished && payload.enrollmentActions && payload.enrollmentActions.length > 0 && (
           <div className="col-span-full">
             <p className="mb-3 text-lg text-muted-foreground">Enrollment Actions</p>
             <div className="flex flex-wrap gap-2">
