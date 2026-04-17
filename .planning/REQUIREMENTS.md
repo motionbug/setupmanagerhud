@@ -1,0 +1,116 @@
+# Requirements: Setup Manager HUD Cleanup
+
+**Defined:** 2026-04-17
+**Core Value:** Keep the dashboard working reliably — devices push events, users see them in real-time
+
+## v1 Requirements
+
+Requirements for cleanup milestone. Each maps to roadmap phases.
+
+### Dead Code
+
+- [ ] **DEAD-01**: Remove unused file exports and unreferenced module members
+- [ ] **DEAD-02**: Remove unused dependencies from package.json
+- [ ] **DEAD-03**: Remove stale comments and commented-out code
+- [ ] **DEAD-04**: Remove duplicate logic across components and hooks
+
+### TypeScript
+
+- [ ] **TS-01**: Eliminate unsafe `as` type casts (especially `as WebhookPayload`)
+- [ ] **TS-02**: Add proper type guards where type narrowing is needed
+- [ ] **TS-03**: Fix weak null/undefined handling patterns
+- [ ] **TS-04**: Remove duplicated type definitions
+
+### CSS
+
+- [ ] **CSS-01**: Remove dead CSS selectors with no matching elements
+- [ ] **CSS-02**: Consolidate repeated CSS rules into shared classes
+- [ ] **CSS-03**: Normalize design tokens (spacing, colors, typography)
+- [ ] **CSS-04**: Remove scattered one-off inline styles
+
+### Security
+
+- [ ] **SEC-01**: Add Content-Security-Policy header
+- [ ] **SEC-02**: Add Strict-Transport-Security header
+- [ ] **SEC-03**: Add Referrer-Policy header
+- [ ] **SEC-04**: Add Permissions-Policy header
+- [ ] **SEC-05**: Fix predictable event IDs by appending crypto.randomUUID()
+
+### Consolidation
+
+- [ ] **CONS-01**: Extract shared KV fetch helper (duplicated in Worker, DashboardRoom, API handlers)
+- [ ] **CONS-02**: Change stats computation from useEffect to useMemo
+
+### Testing
+
+- [ ] **TEST-01**: Add Vitest with Cloudflare Workers integration
+- [ ] **TEST-02**: Test validateWebhookPayload function (security boundary)
+- [ ] **TEST-03**: Test timingSafeEqual function (must be timing-safe)
+- [ ] **TEST-04**: Test validateAccessJwt function (auth bypass prevention)
+
+## v2 Requirements
+
+Deferred to future release. Tracked but not in current roadmap.
+
+### Security (High Priority)
+
+- **SEC-V2-01**: Address T1 — Webhook token rotation mechanism
+- **SEC-V2-02**: Address T2 — Fail-closed dashboard exposure guard
+- **SEC-V2-03**: Address T4 — Role-based data filtering
+
+### Features
+
+- **FEAT-V2-01**: Add pagination to events table
+- **FEAT-V2-02**: Add event deletion capability
+- **FEAT-V2-03**: Surface `accessConfigured` in /api/health response
+
+## Out of Scope
+
+Explicitly excluded. Documented to prevent scope creep.
+
+| Feature | Reason |
+|---------|--------|
+| UI redesign | Focus is cleanup, not visual changes |
+| New dashboard features | Cleanup scope only |
+| Full security overhaul (T1, T2) | Requires separate dedicated effort |
+| Performance optimization | Not the primary driver; only obvious fixes |
+| Mobile responsiveness improvements | UI changes excluded |
+
+## Traceability
+
+Which phases cover which requirements. Updated during roadmap creation.
+
+| Requirement | Phase | Status |
+|-------------|-------|--------|
+| DEAD-01 | TBD | Pending |
+| DEAD-02 | TBD | Pending |
+| DEAD-03 | TBD | Pending |
+| DEAD-04 | TBD | Pending |
+| TS-01 | TBD | Pending |
+| TS-02 | TBD | Pending |
+| TS-03 | TBD | Pending |
+| TS-04 | TBD | Pending |
+| CSS-01 | TBD | Pending |
+| CSS-02 | TBD | Pending |
+| CSS-03 | TBD | Pending |
+| CSS-04 | TBD | Pending |
+| SEC-01 | TBD | Pending |
+| SEC-02 | TBD | Pending |
+| SEC-03 | TBD | Pending |
+| SEC-04 | TBD | Pending |
+| SEC-05 | TBD | Pending |
+| CONS-01 | TBD | Pending |
+| CONS-02 | TBD | Pending |
+| TEST-01 | TBD | Pending |
+| TEST-02 | TBD | Pending |
+| TEST-03 | TBD | Pending |
+| TEST-04 | TBD | Pending |
+
+**Coverage:**
+- v1 requirements: 23 total
+- Mapped to phases: 0
+- Unmapped: 23 ⚠️
+
+---
+*Requirements defined: 2026-04-17*
+*Last updated: 2026-04-17 after initial definition*
