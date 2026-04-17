@@ -13,7 +13,7 @@ This brownfield cleanup transforms a functional but debt-laden codebase into a m
 Decimal phases appear between their surrounding integers in numeric order.
 
 - [x] **Phase 1: Test Foundation and Security Hardening** - Establish test safety net and apply documented security fixes
-- [ ] **Phase 2: Dead Code Removal** - Remove unused exports, dependencies, comments, and duplicate logic
+- [x] **Phase 2: Dead Code Removal** - Remove unused exports, dependencies, comments, and duplicate logic
 - [ ] **Phase 3: TypeScript and Consolidation** - Eliminate unsafe casts, add type guards, extract shared helpers
 - [ ] **Phase 4: CSS Cleanup** - Remove dead selectors, consolidate rules, normalize tokens
 
@@ -63,7 +63,13 @@ Plans:
   4. No duplicate type definitions exist
   5. Single KV fetch helper is used by Worker, DashboardRoom, and API handlers
   6. Stats computation uses `useMemo` instead of `useEffect`
-**Plans**: TBD
+**Plans:** 4 plans in 3 waves
+
+Plans:
+- [ ] 03-01-PLAN.md — Type guards, union variant exports, and KV helper foundation (Wave 1)
+- [ ] 03-02-PLAN.md — Consolidate KV fetch in DashboardRoom and Worker (Wave 2)
+- [ ] 03-03-PLAN.md — Replace useEffect stats with useMemo (Wave 2)
+- [ ] 03-04-PLAN.md — Eliminate type casts in all dashboard components (Wave 3)
 
 ### Phase 4: CSS Cleanup
 **Goal**: Styles are consolidated, dead selectors removed, design tokens normalized
@@ -84,6 +90,6 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 (with decimals inserted if nee
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Test Foundation and Security | 3/3 | Complete | 2026-04-17 |
-| 2. Dead Code Removal | 0/2 | Planned | - |
-| 3. TypeScript and Consolidation | 0/TBD | Not started | - |
+| 2. Dead Code Removal | 2/2 | Complete | 2026-04-17 |
+| 3. TypeScript and Consolidation | 0/4 | Planned | - |
 | 4. CSS Cleanup | 0/TBD | Not started | - |
