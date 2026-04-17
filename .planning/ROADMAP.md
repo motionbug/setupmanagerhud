@@ -49,8 +49,8 @@ Plans:
 **Plans:** 2 plans in 1 wave
 
 Plans:
-- [ ] 02-01-PLAN.md — Remove empty directories and unused types.ts exports (Wave 1)
-- [ ] 02-02-PLAN.md — Remove unused shadcn/ui component exports (Wave 1)
+- [x] 02-01-PLAN.md — Remove empty directories and unused types.ts exports (Wave 1)
+- [x] 02-02-PLAN.md — Remove unused shadcn/ui component exports (Wave 1)
 
 ### Phase 3: TypeScript and Consolidation
 **Goal**: Type system provides actual safety guarantees; shared patterns are extracted
