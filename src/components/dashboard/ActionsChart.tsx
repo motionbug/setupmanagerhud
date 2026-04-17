@@ -8,7 +8,8 @@ import {
   Legend,
   ResponsiveContainer,
 } from "recharts";
-import type { StoredEvent, WebhookPayload } from "@/types";
+import type { StoredEvent, SetupManagerFinishedWebhook } from "@/types";
+import { isFinishedWebhook } from "@/types";
 
 interface ActionsChartProps {
   events: StoredEvent[];
@@ -20,8 +21,10 @@ const FAILED_COLOR = "var(--chart-5)";
 
 export function ActionsChart({ events, embedded = false }: ActionsChartProps) {
   const actionData = events
-    .filter((e) => e.payload.event === "com.jamf.setupmanager.finished")
-    .flatMap((e) => (e.payload as WebhookPayload).enrollmentActions || [])
+    .filter((e): e is StoredEvent & { payload: SetupManagerFinishedWebhook } =>
+      isFinishedWebhook(e.payload)
+    )
+    .flatMap((e) => e.payload.enrollmentActions || [])
     .reduce(
       (acc, action) => {
         if (!acc[action.label]) {
