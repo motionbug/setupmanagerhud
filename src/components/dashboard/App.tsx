@@ -10,7 +10,8 @@ import { ThemeToggle } from "./ThemeToggle";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import type { FilterState, WebhookPayload } from "@/types";
+import type { FilterState } from "@/types";
+import { isFinishedWebhook } from "@/types";
 
 export function App() {
   const { connected, events, stats } = useWebSocket();
@@ -24,7 +25,7 @@ export function App() {
 
   const filteredEvents = React.useMemo(() => {
     return events.filter((event) => {
-      const payload = event.payload as WebhookPayload;
+      const payload = event.payload;
 
       if (filters.eventType === "started" && payload.event !== "com.jamf.setupmanager.started") {
         return false;
@@ -33,6 +34,9 @@ export function App() {
         return false;
       }
       if (filters.eventType === "failed") {
+        if (!isFinishedWebhook(payload)) {
+          return false;
+        }
         const actions = payload.enrollmentActions || [];
         if (!actions.some((a) => a.status === "failed")) {
           return false;
@@ -57,12 +61,14 @@ export function App() {
 
       if (filters.search) {
         const searchLower = filters.search.toLowerCase();
+        const userID = isFinishedWebhook(payload) ? payload.userEntry?.userID : undefined;
+        const computerName = isFinishedWebhook(payload) ? payload.computerName : undefined;
         const searchableFields = [
           payload.serialNumber,
           payload.modelName,
-          payload.computerName,
+          computerName,
           payload.macOSVersion,
-          payload.userEntry?.userID,
+          userID,
         ]
           .filter(Boolean)
           .join(" ")
