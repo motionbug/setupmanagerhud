@@ -1,17 +1,16 @@
-import { useState, useEffect, useCallback, useRef } from "react";
-import type { StoredEvent, Stats, WebhookPayload } from "@/types";
+import { useState, useEffect, useCallback, useRef, useMemo } from "react";
+import type { StoredEvent, Stats, SetupManagerFinishedWebhook } from "@/types";
+import { isFinishedWebhook } from "@/types";
 
 interface WebSocketState {
   connected: boolean;
   events: StoredEvent[];
-  stats: Stats;
 }
 
 export function useWebSocket() {
   const [state, setState] = useState<WebSocketState>({
     connected: false,
     events: [],
-    stats: { total: 0, started: 0, finished: 0, avgDuration: 0, successRate: 100, failedActions: 0 },
   });
 
   const wsRef = useRef<WebSocket | null>(null);
@@ -93,18 +92,19 @@ export function useWebSocket() {
     };
   }, [connect]);
 
-  // Compute stats from events
-  useEffect(() => {
+  // Compute stats from events using useMemo (derived data, not separate state)
+  const stats = useMemo((): Stats => {
     const started = state.events.filter(
       (e) => e.payload.event === "com.jamf.setupmanager.started"
     );
     const finished = state.events.filter(
-      (e) => e.payload.event === "com.jamf.setupmanager.finished"
+      (e): e is StoredEvent & { payload: SetupManagerFinishedWebhook } =>
+        isFinishedWebhook(e.payload)
     );
 
     const durations = finished
-      .map((e) => (e.payload as WebhookPayload).duration)
-      .filter((d): d is number => typeof d === "number" && d > 0);
+      .map((e) => e.payload.duration)
+      .filter((d) => d > 0);
 
     const avgDuration =
       durations.length > 0
@@ -112,12 +112,12 @@ export function useWebSocket() {
         : 0;
 
     const failedActions = finished.reduce((count, e) => {
-      const actions = (e.payload as WebhookPayload).enrollmentActions || [];
+      const actions = e.payload.enrollmentActions || [];
       return count + actions.filter((a) => a.status === "failed").length;
     }, 0);
 
     const totalActions = finished.reduce((count, e) => {
-      return count + ((e.payload as WebhookPayload).enrollmentActions?.length || 0);
+      return count + (e.payload.enrollmentActions?.length || 0);
     }, 0);
 
     const successRate =
@@ -125,18 +125,15 @@ export function useWebSocket() {
         ? Math.round(((totalActions - failedActions) / totalActions) * 100)
         : 100;
 
-    setState((prev) => ({
-      ...prev,
-      stats: {
-        total: prev.events.length,
-        started: started.length,
-        finished: finished.length,
-        avgDuration,
-        successRate,
-        failedActions,
-      },
-    }));
+    return {
+      total: state.events.length,
+      started: started.length,
+      finished: finished.length,
+      avgDuration,
+      successRate,
+      failedActions,
+    };
   }, [state.events]);
 
-  return state;
+  return { ...state, stats };
 }
