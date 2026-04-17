@@ -23,7 +23,7 @@ import {
 } from "@/components/ui/tooltip";
 import { DashboardIcon } from "./DashboardIcon";
 import { Download01Icon, FilterIcon, Search01Icon, Cancel01Icon } from "@hugeicons/core-free-icons";
-import type { FilterState, StoredEvent, WebhookPayload } from "@/types";
+import type { FilterState, StoredEvent, SetupManagerWebhook } from "@/types";
 
 interface FiltersProps {
   filters: FilterState;
@@ -64,7 +64,7 @@ export function Filters({ filters, onFiltersChange, events }: FiltersProps) {
       const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
       downloadFile("events.json", blob);
     } else {
-      const csv = toCsv(data as WebhookPayload[]);
+      const csv = toCsv(data);
       const blob = new Blob([csv], { type: "text/csv" });
       downloadFile("events.csv", blob);
     }
@@ -98,7 +98,7 @@ export function Filters({ filters, onFiltersChange, events }: FiltersProps) {
     return str;
   };
 
-  const toCsv = (rows: WebhookPayload[]) => {
+  const toCsv = (rows: SetupManagerWebhook[]) => {
     const headers = [
       "event", "timestamp", "started", "finished", "duration",
       "serialNumber", "modelName", "computerName",
