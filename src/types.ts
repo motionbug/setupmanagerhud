@@ -3,7 +3,7 @@
  * with input validation utilities
  */
 
-export interface SetupManagerStartedWebhook {
+interface SetupManagerStartedWebhook {
   name: "Started";
   event: "com.jamf.setupmanager.started";
   timestamp: string;
@@ -30,7 +30,7 @@ export interface UserEntry {
   assetTag?: string;
 }
 
-export interface SetupManagerFinishedWebhook extends Omit<SetupManagerStartedWebhook, 'name' | 'event'> {
+interface SetupManagerFinishedWebhook extends Omit<SetupManagerStartedWebhook, 'name' | 'event'> {
   name: "Finished";
   event: "com.jamf.setupmanager.finished";
   duration: number;
@@ -50,7 +50,7 @@ export interface StoredEvent {
   eventId: string;
 }
 
-export interface ValidationResult {
+interface ValidationResult {
   valid: boolean;
   error?: string;
 }
@@ -251,13 +251,6 @@ export function validateWebhookPayload(payload: unknown): ValidationResult {
   }
 
   return { valid: true };
-}
-
-/**
- * Type guard to check if a validated payload is a SetupManagerWebhook
- */
-export function isSetupManagerWebhook(payload: unknown): payload is SetupManagerWebhook {
-  return validateWebhookPayload(payload).valid;
 }
 
 // UI types
