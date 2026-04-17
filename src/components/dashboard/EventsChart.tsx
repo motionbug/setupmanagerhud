@@ -9,7 +9,8 @@ import {
   Legend,
   ResponsiveContainer,
 } from "recharts";
-import type { StoredEvent, WebhookPayload } from "@/types";
+import type { StoredEvent, SetupManagerFinishedWebhook } from "@/types";
+import { isFinishedWebhook } from "@/types";
 
 interface EventsChartProps {
   events: StoredEvent[];
@@ -109,7 +110,8 @@ export function EventsChart({ events, embedded = false }: EventsChartProps) {
 
 function createTimeBuckets(events: StoredEvent[], timeRange: TimeRange) {
   const finishedEvents = events.filter(
-    (e) => e.payload.event === "com.jamf.setupmanager.finished"
+    (e): e is StoredEvent & { payload: SetupManagerFinishedWebhook } =>
+      isFinishedWebhook(e.payload)
   );
 
   if (finishedEvents.length === 0) return [];
@@ -128,7 +130,7 @@ function createTimeBuckets(events: StoredEvent[], timeRange: TimeRange) {
 
   const eventTimes = finishedEvents
     .map((e) => {
-      const payload = e.payload as WebhookPayload;
+      const payload = e.payload;
       const time = new Date(payload.finished || payload.started).getTime();
       const actions = payload.enrollmentActions || [];
       const hasFailed = actions.some((a) => a.status === "failed");
