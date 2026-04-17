@@ -33,7 +33,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 **Plans:** 3 plans in 2 waves
 
 Plans:
-- [ ] 01-01-PLAN.md — Vitest setup and validateWebhookPayload tests (Wave 1)
+- [x] 01-01-PLAN.md — Vitest setup and validateWebhookPayload tests (Wave 1)
 - [ ] 01-02-PLAN.md — timingSafeEqual and validateAccessJwt tests (Wave 2)
 - [ ] 01-03-PLAN.md — Security headers and event ID randomness (Wave 2)
 
