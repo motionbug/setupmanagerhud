@@ -4,6 +4,7 @@ import {
   type SetupManagerWebhook,
   type StoredEvent,
 } from "./types";
+import { fetchEvents } from "./kv";
 
 export { DashboardRoom };
 
@@ -301,42 +302,13 @@ async function handleEvents(request: Request, env: Env): Promise<Response> {
   const limitParam = url.searchParams.get("limit");
   const limit = Math.min(Math.max(parseInt(limitParam || "100", 10) || 100, 1), 1000);
 
-  const list = await env.WEBHOOKS.list({ limit });
-  const events = await Promise.all(
-    list.keys.map(async (key) => {
-      const data = await env.WEBHOOKS.get(key.name);
-      if (!data) return null;
-      try {
-        return JSON.parse(data) as StoredEvent;
-      } catch {
-        return null;
-      }
-    })
-  );
-
-  const validEvents = events
-    .filter((e): e is StoredEvent => e !== null)
-    .sort((a, b) => b.timestamp - a.timestamp);
-
+  const validEvents = await fetchEvents(env, limit);
   return json(validEvents, 200, request);
 }
 
 // GET /api/stats
 async function handleStats(request: Request, env: Env): Promise<Response> {
-  const list = await env.WEBHOOKS.list({ limit: 1000 });
-  const events = await Promise.all(
-    list.keys.map(async (key) => {
-      const data = await env.WEBHOOKS.get(key.name);
-      if (!data) return null;
-      try {
-        return JSON.parse(data) as StoredEvent;
-      } catch {
-        return null;
-      }
-    })
-  );
-
-  const validEvents = events.filter((e): e is StoredEvent => e !== null);
+  const validEvents = await fetchEvents(env, 1000);
   const startedEvents = validEvents.filter(
     (e) => e.payload.event === "com.jamf.setupmanager.started"
   );
