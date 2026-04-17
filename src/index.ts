@@ -19,6 +19,41 @@ interface Env {
 const SECURITY_HEADERS: Record<string, string> = {
   "X-Content-Type-Options": "nosniff",
   "X-Frame-Options": "DENY",
+
+  // SEC-01: Content-Security-Policy
+  // Dashboard loads: React (bundled), Tailwind CSS (bundled), Figtree font (@fontsource),
+  // recharts (bundled), Radix UI (bundled), HugeIcons (bundled)
+  // WebSocket connections to 'self'
+  // Note: 'unsafe-inline' needed for Tailwind v4 runtime styles and Vite dev mode
+  "Content-Security-Policy": [
+    "default-src 'self'",
+    "script-src 'self' 'unsafe-inline'",
+    "style-src 'self' 'unsafe-inline'",
+    "font-src 'self'",
+    "img-src 'self' data:",
+    "connect-src 'self' wss:",
+    "frame-ancestors 'none'",
+    "base-uri 'self'",
+    "form-action 'self'",
+  ].join("; "),
+
+  // SEC-02: Strict-Transport-Security (per D-03: 1 year with includeSubDomains)
+  "Strict-Transport-Security": "max-age=31536000; includeSubDomains",
+
+  // SEC-03: Referrer-Policy - strict for privacy
+  "Referrer-Policy": "strict-origin-when-cross-origin",
+
+  // SEC-04: Permissions-Policy - disable unused browser features
+  "Permissions-Policy": [
+    "accelerometer=()",
+    "camera=()",
+    "geolocation=()",
+    "gyroscope=()",
+    "magnetometer=()",
+    "microphone=()",
+    "payment=()",
+    "usb=()",
+  ].join(", "),
 };
 
 /**
@@ -241,7 +276,8 @@ async function handleWebhook(request: Request, env: Env): Promise<Response> {
 
   const webhookPayload = payload as SetupManagerWebhook;
   const timestamp = Date.now();
-  const eventId = `${webhookPayload.event}:${webhookPayload.serialNumber}:${timestamp}`;
+  const uuid = crypto.randomUUID();
+  const eventId = `${webhookPayload.event}:${webhookPayload.serialNumber}:${timestamp}:${uuid}`;
 
   const storedEvent: StoredEvent = { payload: webhookPayload, timestamp, eventId };
 
@@ -443,3 +479,12 @@ export default {
     return new Response("Not Found", { status: 404 });
   },
 };
+
+/** @internal Exported for testing only */
+export { timingSafeEqual as _testTimingSafeEqual };
+
+/** @internal Exported for testing only */
+export { validateAccessJwt as _testValidateAccessJwt };
+
+/** @internal Exported for testing only - Env type for test mocks */
+export type { Env as _TestEnv };
