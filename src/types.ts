@@ -3,7 +3,7 @@
  * with input validation utilities
  */
 
-interface SetupManagerStartedWebhook {
+export interface SetupManagerStartedWebhook {
   name: "Started";
   event: "com.jamf.setupmanager.started";
   timestamp: string;
@@ -30,7 +30,7 @@ export interface UserEntry {
   assetTag?: string;
 }
 
-interface SetupManagerFinishedWebhook extends Omit<SetupManagerStartedWebhook, 'name' | 'event'> {
+export interface SetupManagerFinishedWebhook extends Omit<SetupManagerStartedWebhook, 'name' | 'event'> {
   name: "Finished";
   event: "com.jamf.setupmanager.finished";
   duration: number;
@@ -43,6 +43,25 @@ interface SetupManagerFinishedWebhook extends Omit<SetupManagerStartedWebhook, '
 }
 
 export type SetupManagerWebhook = SetupManagerStartedWebhook | SetupManagerFinishedWebhook;
+
+/**
+ * Type guard to narrow SetupManagerWebhook to SetupManagerFinishedWebhook.
+ * Use this instead of unsafe `as WebhookPayload` casts.
+ */
+export function isFinishedWebhook(
+  payload: SetupManagerWebhook
+): payload is SetupManagerFinishedWebhook {
+  return payload.event === "com.jamf.setupmanager.finished";
+}
+
+/**
+ * Type guard to narrow SetupManagerWebhook to SetupManagerStartedWebhook.
+ */
+export function isStartedWebhook(
+  payload: SetupManagerWebhook
+): payload is SetupManagerStartedWebhook {
+  return payload.event === "com.jamf.setupmanager.started";
+}
 
 export interface StoredEvent {
   payload: SetupManagerWebhook;
