@@ -12,7 +12,7 @@ This brownfield cleanup transforms a functional but debt-laden codebase into a m
 
 Decimal phases appear between their surrounding integers in numeric order.
 
-- [ ] **Phase 1: Test Foundation and Security Hardening** - Establish test safety net and apply documented security fixes
+- [x] **Phase 1: Test Foundation and Security Hardening** - Establish test safety net and apply documented security fixes
 - [ ] **Phase 2: Dead Code Removal** - Remove unused exports, dependencies, comments, and duplicate logic
 - [ ] **Phase 3: TypeScript and Consolidation** - Eliminate unsafe casts, add type guards, extract shared helpers
 - [ ] **Phase 4: CSS Cleanup** - Remove dead selectors, consolidate rules, normalize tokens
@@ -46,7 +46,11 @@ Plans:
   2. All package.json dependencies are imported somewhere in the codebase
   3. No commented-out code blocks or stale TODO comments remain
   4. No duplicate logic patterns exist across components and hooks
-**Plans**: TBD
+**Plans:** 2 plans in 1 wave
+
+Plans:
+- [ ] 02-01-PLAN.md — Remove empty directories and unused types.ts exports (Wave 1)
+- [ ] 02-02-PLAN.md — Remove unused shadcn/ui component exports (Wave 1)
 
 ### Phase 3: TypeScript and Consolidation
 **Goal**: Type system provides actual safety guarantees; shared patterns are extracted
@@ -79,7 +83,7 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 (with decimals inserted if nee
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Test Foundation and Security | 0/3 | Planned | - |
-| 2. Dead Code Removal | 0/TBD | Not started | - |
+| 1. Test Foundation and Security | 3/3 | Complete | 2026-04-17 |
+| 2. Dead Code Removal | 0/2 | Planned | - |
 | 3. TypeScript and Consolidation | 0/TBD | Not started | - |
 | 4. CSS Cleanup | 0/TBD | Not started | - |
