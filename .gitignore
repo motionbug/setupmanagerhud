@@ -31,3 +31,6 @@ npm-debug.log*
 CLAUDE.md
 SECURITY_AUDIT.md
 /.claude
+
+# Local security notes
+setupmanagerHUD-threat-model.md

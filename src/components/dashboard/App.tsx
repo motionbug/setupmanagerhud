@@ -119,14 +119,15 @@ export function App() {
             finished={stats.finished}
             avgDuration={stats.avgDuration}
             failedActions={stats.failedActions}
+            onFailedActionsClick={() => setFilters((f) => ({ ...f, eventType: "failed" }))}
           />
 
           <div className="grid gap-6 xl:grid-cols-2">
             <Card className="border-border/70 bg-card/90 shadow-sm">
               <CardHeader>
-                <CardTitle className="text-xl font-semibold">Event Timeline</CardTitle>
+                <CardTitle className="text-xl font-semibold">Enrollment Outcomes</CardTitle>
                 <CardDescription className="text-sm md:text-base">
-                  Started and finished activity grouped over time.
+                  Success and failure rates for completed enrollments over time.
                 </CardDescription>
               </CardHeader>
               <CardContent className="pt-0">

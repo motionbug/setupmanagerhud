@@ -13,9 +13,10 @@ interface KpiCardsProps {
   finished: number;
   avgDuration: number;
   failedActions: number;
+  onFailedActionsClick?: () => void;
 }
 
-export function KpiCards({ started, finished, avgDuration, failedActions }: KpiCardsProps) {
+export function KpiCards({ started, finished, avgDuration, failedActions, onFailedActionsClick }: KpiCardsProps) {
   const formatDuration = (seconds: number) => {
     if (seconds < 60) return `${seconds}s`;
     const mins = Math.floor(seconds / 60);
@@ -29,6 +30,8 @@ export function KpiCards({ started, finished, avgDuration, failedActions }: KpiC
     icon: IconSvgElement;
     description: string;
     color: string;
+    onClick?: () => void;
+    glow?: boolean;
   }[] = [
     {
       title: "Total Started",
@@ -57,13 +60,21 @@ export function KpiCards({ started, finished, avgDuration, failedActions }: KpiC
       icon: AlertDiamondIcon,
       description: "Enrollment actions failed",
       color: failedActions > 0 ? "text-destructive" : "text-muted-foreground",
+      onClick: failedActions > 0 ? onFailedActionsClick : undefined,
+      glow: failedActions > 0,
     },
   ];
 
   return (
     <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
       {cards.map((card) => (
-        <Card key={card.title} className="border-border/70 bg-card/90 shadow-sm">
+        <Card
+          key={card.title}
+          className={`border-border/70 bg-card/90 shadow-sm ${
+            card.onClick ? "cursor-pointer transition-colors hover:bg-accent/50" : ""
+          } ${card.glow ? "ring-2 ring-destructive/30 shadow-[0_0_15px_-3px] shadow-destructive/25" : ""}`}
+          onClick={card.onClick}
+        >
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
             <CardTitle className="stat-label text-sm">{card.title}</CardTitle>
             <div className="flex h-9 w-9 items-center justify-center rounded-full bg-muted/70">

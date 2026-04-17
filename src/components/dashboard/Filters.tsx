@@ -22,7 +22,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { DashboardIcon } from "./DashboardIcon";
-import { Download01Icon, FilterIcon, Search01Icon } from "@hugeicons/core-free-icons";
+import { Download01Icon, FilterIcon, Search01Icon, Cancel01Icon } from "@hugeicons/core-free-icons";
 import type { FilterState, StoredEvent, WebhookPayload } from "@/types";
 
 interface FiltersProps {
@@ -30,6 +30,14 @@ interface FiltersProps {
   onFiltersChange: (filters: FilterState) => void;
   events: StoredEvent[];
 }
+
+const DEFAULT_FILTERS: FilterState = {
+  eventType: "all",
+  macOSVersion: "",
+  model: "",
+  timeRange: "all",
+  search: "",
+};
 
 export function Filters({ filters, onFiltersChange, events }: FiltersProps) {
   const macOSVersions = React.useMemo(() => {
@@ -41,6 +49,14 @@ export function Filters({ filters, onFiltersChange, events }: FiltersProps) {
     const modelSet = new Set(events.map((e) => e.payload.modelName));
     return Array.from(modelSet).sort();
   }, [events]);
+
+  const hasActiveFilters =
+    filters.eventType !== "all" ||
+    filters.macOSVersion !== "" ||
+    filters.model !== "" ||
+    filters.search !== "";
+
+  const clearFilters = () => onFiltersChange(DEFAULT_FILTERS);
 
   const handleExport = (format: "csv" | "json") => {
     const data = events.map((e) => e.payload);
@@ -101,9 +117,25 @@ export function Filters({ filters, onFiltersChange, events }: FiltersProps) {
 
   return (
     <TooltipProvider>
-      <div className="grid gap-4 lg:grid-cols-[minmax(280px,1.2fr)_auto] lg:items-start">
-        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-          <div className="relative md:col-span-2 xl:col-span-1">
+      <div className="space-y-4">
+        {hasActiveFilters && (
+          <div className="flex items-center gap-2">
+            <Badge
+              variant="destructive"
+              className="cursor-pointer hover:bg-destructive/90"
+              onClick={clearFilters}
+            >
+              <DashboardIcon icon={Cancel01Icon} size={12} className="mr-1" />
+              Clear filters
+            </Badge>
+            <span className="text-sm text-muted-foreground">
+              Showing filtered results
+            </span>
+          </div>
+        )}
+        <div className="grid gap-4 lg:grid-cols-[minmax(280px,1.2fr)_auto] lg:items-start">
+          <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+            <div className="relative md:col-span-2 xl:col-span-1">
             <DashboardIcon
               icon={Search01Icon}
               size={16}
@@ -174,12 +206,10 @@ export function Filters({ filters, onFiltersChange, events }: FiltersProps) {
         </div>
 
         <div className="flex items-center justify-between gap-3 lg:justify-end">
-          <div className="flex items-center gap-2">
-            <Badge variant="secondary" className="dashboard-badge">
-              <DashboardIcon icon={FilterIcon} size={14} className="mr-1" />
-              {events.length} loaded
-            </Badge>
-          </div>
+          <Badge variant="secondary" className="dashboard-badge">
+            <DashboardIcon icon={FilterIcon} size={14} className="mr-1" />
+            {events.length} loaded
+          </Badge>
 
           <DropdownMenu>
             <Tooltip>
@@ -202,6 +232,7 @@ export function Filters({ filters, onFiltersChange, events }: FiltersProps) {
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
+        </div>
         </div>
       </div>
     </TooltipProvider>

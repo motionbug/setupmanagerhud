@@ -323,30 +323,44 @@ curl -X POST https://setupmanagerhud.<your-subdomain>.workers.dev/webhook \
 # Expected: 200 OK
 ```
 
-### Optional: Webhook Token Validation (Coming Soon)
-
-> **🚧 Coming soon:** Webhook token validation is built into the Worker and ready to go, but [Setup Manager](https://github.com/nicknameislink/setupmanager) does not yet support sending an `Authorization` header with webhook requests. Once Setup Manager adds support for authenticated webhooks, you'll be able to enable this feature with no code changes — just set the secret and you're done.
+### Optional: Webhook Token Validation
 
 This feature adds a shared secret between Setup Manager and your Worker, so only your devices can POST enrollment events. It prevents unauthorized payloads from appearing on your dashboard.
-
-**How it will work once Setup Manager supports it:**
 
 **1.** Add a secret to your Worker:
 
 ```bash
 npx wrangler secret put WEBHOOK_SECRET
-# Enter a random string when prompted
+# Enter a random string when prompted (e.g., output of: openssl rand -hex 24)
 ```
 
-**2.** Configure Setup Manager to send the same secret in the `Authorization` header (details will depend on Setup Manager's implementation):
+**2.** Configure Setup Manager to send the same secret as a Bearer token. In your Setup Manager configuration plist, add a `token` key to each webhook:
 
+```xml
+<key>webhooks</key>
+<dict>
+  <key>started</key>
+  <dict>
+    <key>url</key>
+    <string>https://setupmanagerhud.<your-subdomain>.workers.dev/webhook</string>
+    <key>token</key>
+    <string>your-secret-here</string>
+  </dict>
+  <key>finished</key>
+  <dict>
+    <key>url</key>
+    <string>https://setupmanagerhud.<your-subdomain>.workers.dev/webhook</string>
+    <key>token</key>
+    <string>your-secret-here</string>
+  </dict>
+</dict>
 ```
-Authorization: Bearer <your-secret>
-```
 
-**3.** That's it — the Worker already validates this header on `/webhook` requests when `WEBHOOK_SECRET` is set. If it's not set, the webhook accepts all valid payloads (the current default behavior).
+Setup Manager will send this as `Authorization: Bearer <token>` in the webhook request.
 
-> **Tip:** In the meantime, you can use [rate limiting](#optional-rate-limiting-the-webhook-endpoint) to reduce the risk of abuse on the open webhook endpoint.
+**3.** That's it — the Worker validates this header on `/webhook` requests when `WEBHOOK_SECRET` is set. If it's not set, the webhook accepts all valid payloads (the default behavior for testing).
+
+> **Note:** Setup Manager also supports Basic Auth (`username` + `password` keys instead of `token`), but this Worker only validates Bearer tokens. Use the `token` key for compatibility.
 
 ### Optional: Rate Limiting the Webhook Endpoint
 
