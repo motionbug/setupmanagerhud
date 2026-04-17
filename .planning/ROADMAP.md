@@ -30,7 +30,12 @@ Decimal phases appear between their surrounding integers in numeric order.
   4. `validateAccessJwt()` has tests covering valid tokens, expired tokens, and invalid signatures
   5. All HTTP responses include CSP, HSTS, Referrer-Policy, and Permissions-Policy headers
   6. Event IDs include `crypto.randomUUID()` component (verified by test)
-**Plans**: TBD
+**Plans:** 3 plans in 2 waves
+
+Plans:
+- [ ] 01-01-PLAN.md — Vitest setup and validateWebhookPayload tests (Wave 1)
+- [ ] 01-02-PLAN.md — timingSafeEqual and validateAccessJwt tests (Wave 2)
+- [ ] 01-03-PLAN.md — Security headers and event ID randomness (Wave 2)
 
 ### Phase 2: Dead Code Removal
 **Goal**: Codebase contains only referenced, actively-used code
@@ -74,7 +79,7 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 (with decimals inserted if nee
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Test Foundation and Security | 0/TBD | Not started | - |
+| 1. Test Foundation and Security | 0/3 | Planned | - |
 | 2. Dead Code Removal | 0/TBD | Not started | - |
 | 3. TypeScript and Consolidation | 0/TBD | Not started | - |
 | 4. CSS Cleanup | 0/TBD | Not started | - |
