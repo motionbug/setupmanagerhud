@@ -23,10 +23,10 @@ Requirements for cleanup milestone. Each maps to roadmap phases.
 
 ### CSS
 
-- [ ] **CSS-01**: Remove dead CSS selectors with no matching elements
-- [ ] **CSS-02**: Consolidate repeated CSS rules into shared classes
-- [ ] **CSS-03**: Normalize design tokens (spacing, colors, typography)
-- [ ] **CSS-04**: Remove scattered one-off inline styles
+- [x] **CSS-01**: Remove dead CSS selectors with no matching elements
+- [x] **CSS-02**: Consolidate repeated CSS rules into shared classes
+- [x] **CSS-03**: Normalize design tokens (spacing, colors, typography)
+- [x] **CSS-04**: Remove scattered one-off inline styles
 
 ### Security
 
@@ -101,10 +101,10 @@ Which phases cover which requirements. Updated during roadmap creation.
 | TS-04 | Phase 3 | Pending |
 | CONS-01 | Phase 3 | Pending |
 | CONS-02 | Phase 3 | Pending |
-| CSS-01 | Phase 4 | Pending |
-| CSS-02 | Phase 4 | Pending |
-| CSS-03 | Phase 4 | Pending |
-| CSS-04 | Phase 4 | Pending |
+| CSS-01 | Phase 4 | Complete |
+| CSS-02 | Phase 4 | Complete |
+| CSS-03 | Phase 4 | Complete |
+| CSS-04 | Phase 4 | Complete |
 
 **Coverage:**
 - v1 requirements: 23 total

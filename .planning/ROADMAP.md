@@ -83,7 +83,7 @@ Plans:
 **Plans:** 1 plan in 1 wave
 
 Plans:
-- [ ] 04-01-PLAN.md — Remove dead sidebar variables and unused chart-title class (Wave 1)
+- [x] 04-01-PLAN.md — Remove dead sidebar variables and unused chart-title class (Wave 1)
 
 ## Progress
 
