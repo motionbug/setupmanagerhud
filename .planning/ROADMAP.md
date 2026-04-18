@@ -14,7 +14,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 
 - [x] **Phase 1: Test Foundation and Security Hardening** - Establish test safety net and apply documented security fixes
 - [x] **Phase 2: Dead Code Removal** - Remove unused exports, dependencies, comments, and duplicate logic
-- [ ] **Phase 3: TypeScript and Consolidation** - Eliminate unsafe casts, add type guards, extract shared helpers
+- [x] **Phase 3: TypeScript and Consolidation** - Eliminate unsafe casts, add type guards, extract shared helpers
 - [ ] **Phase 4: CSS Cleanup** - Remove dead selectors, consolidate rules, normalize tokens
 
 ## Phase Details
@@ -80,7 +80,10 @@ Plans:
   2. Repeated CSS rules are consolidated into shared utility classes
   3. Spacing, colors, and typography use consistent design tokens
   4. No scattered one-off inline styles remain (or documented exceptions)
-**Plans**: TBD
+**Plans:** 1 plan in 1 wave
+
+Plans:
+- [ ] 04-01-PLAN.md — Remove dead sidebar variables and unused chart-title class (Wave 1)
 
 ## Progress
 
@@ -91,5 +94,5 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 (with decimals inserted if nee
 |-------|----------------|--------|-----------|
 | 1. Test Foundation and Security | 3/3 | Complete | 2026-04-17 |
 | 2. Dead Code Removal | 2/2 | Complete | 2026-04-17 |
-| 3. TypeScript and Consolidation | 0/4 | Planned | - |
-| 4. CSS Cleanup | 0/TBD | Not started | - |
+| 3. TypeScript and Consolidation | 4/4 | Complete | 2026-04-17 |
+| 4. CSS Cleanup | 0/1 | Planned | - |
