@@ -133,11 +133,6 @@
     @apply py-4;
   }
 
-  /* Chart titles */
-  .chart-title {
-    @apply text-lg font-semibold;
-  }
-
   /* Header */
   .dashboard-header {
     @apply text-2xl font-semibold tracking-tight md:text-[1.9rem];
