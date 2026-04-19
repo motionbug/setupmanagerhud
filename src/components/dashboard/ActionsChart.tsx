@@ -5,7 +5,6 @@ import {
   YAxis,
   CartesianGrid,
   Tooltip,
-  Legend,
   ResponsiveContainer,
 } from "recharts";
 import type { StoredEvent, SetupManagerFinishedWebhook } from "@/types";
@@ -16,8 +15,8 @@ interface ActionsChartProps {
   embedded?: boolean;
 }
 
-const FINISHED_COLOR = "var(--chart-2)";
-const FAILED_COLOR = "var(--chart-5)";
+const SUCCESS_COLOR = "var(--jamf-green)";
+const FAILURE_COLOR = "var(--jamf-red)";
 
 export function ActionsChart({ events, embedded = false }: ActionsChartProps) {
   const actionData = events
@@ -39,11 +38,11 @@ export function ActionsChart({ events, embedded = false }: ActionsChartProps) {
 
   const chartData = Object.values(actionData)
     .sort((a, b) => b.finished + b.failed - (a.finished + a.failed))
-    .slice(0, 10);
+    .slice(0, 8);
 
   if (chartData.length === 0) {
     return (
-      <div className="flex h-[280px] items-center justify-center rounded-lg border border-dashed border-border/70 bg-muted/30 text-muted-foreground">
+      <div className="flex h-64 items-center justify-center rounded-xl border border-dashed border-edge text-ink-faint text-base">
         No enrollment action data yet
       </div>
     );
@@ -51,20 +50,46 @@ export function ActionsChart({ events, embedded = false }: ActionsChartProps) {
 
   const chart = (
     <ResponsiveContainer width="100%" height={280}>
-      <BarChart data={chartData} layout="vertical">
-        <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
-        <XAxis type="number" tick={{ fontSize: 12 }} />
-        <YAxis dataKey="label" type="category" tick={{ fontSize: 12 }} width={110} />
+      <BarChart data={chartData} layout="vertical" barCategoryGap="18%">
+        <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="var(--edge-subtle)" />
+        <XAxis
+          type="number"
+          tick={{ fontSize: 13, fill: "var(--ink-faint)" }}
+          tickLine={false}
+          axisLine={{ stroke: "var(--edge-subtle)" }}
+        />
+        <YAxis
+          dataKey="label"
+          type="category"
+          tick={{ fontSize: 13, fill: "var(--ink-muted)" }}
+          tickLine={false}
+          axisLine={false}
+          width={120}
+        />
         <Tooltip
           contentStyle={{
-            backgroundColor: "var(--card)",
-            border: "1px solid var(--border)",
-            borderRadius: "var(--radius)",
+            backgroundColor: "var(--surface-overlay)",
+            border: "1px solid var(--edge)",
+            borderRadius: "12px",
+            fontSize: "14px",
+            padding: "12px 16px",
           }}
+          labelStyle={{ color: "var(--ink)", fontWeight: 600, marginBottom: "4px" }}
         />
-        <Legend />
-        <Bar dataKey="finished" name="Finished" fill={FINISHED_COLOR} stackId="a" />
-        <Bar dataKey="failed" name="Failed" fill={FAILED_COLOR} stackId="a" />
+        <Bar
+          dataKey="finished"
+          name="Finished"
+          fill={SUCCESS_COLOR}
+          stackId="a"
+          radius={[0, 6, 6, 0]}
+        />
+        <Bar
+          dataKey="failed"
+          name="Failed"
+          fill={FAILURE_COLOR}
+          stackId="a"
+          radius={[0, 6, 6, 0]}
+        />
       </BarChart>
     </ResponsiveContainer>
   );
@@ -73,7 +98,5 @@ export function ActionsChart({ events, embedded = false }: ActionsChartProps) {
     return chart;
   }
 
-  return (
-    <div>{chart}</div>
-  );
+  return <div>{chart}</div>;
 }

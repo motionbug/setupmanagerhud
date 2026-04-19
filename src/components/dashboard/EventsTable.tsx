@@ -7,7 +7,6 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { DashboardIcon } from "./DashboardIcon";
 import {
@@ -33,9 +32,9 @@ function getThroughputQuality(mbps: number, type: "upload" | "download"): Throug
 
 function getQualityColor(quality: ThroughputQuality): string {
   switch (quality) {
-    case "good": return "text-green-500 font-semibold";
-    case "ok": return "text-yellow-500 font-semibold";
-    case "slow": return "text-destructive font-semibold";
+    case "good": return "text-status-success font-semibold";
+    case "ok": return "text-status-warning font-semibold";
+    case "slow": return "text-status-failure font-semibold";
   }
 }
 
@@ -59,16 +58,16 @@ function getOverallQuality(download?: number, upload?: number): ThroughputQualit
 
 function NetworkIndicator({ download, upload }: { download?: number; upload?: number }) {
   const quality = getOverallQuality(download, upload);
-  if (quality === null) return <span className="text-muted-foreground">—</span>;
+  if (quality === null) return <span className="text-ink-ghost">—</span>;
 
-  const bg =
-    quality === "good" ? "bg-green-500" :
-    quality === "ok" ? "bg-yellow-500" :
-    "bg-destructive";
+  const dotClass =
+    quality === "good" ? "stage-dot-success" :
+    quality === "ok" ? "stage-dot-warning" :
+    "stage-dot-failure";
 
   return (
     <div className="flex justify-center">
-      <div className={`w-3 h-3 rounded-full ${bg}`} />
+      <div className={`stage-dot ${dotClass}`} />
     </div>
   );
 }
@@ -108,16 +107,16 @@ export function EventsTable({ events, maxVisible = 50 }: EventsTableProps) {
   };
 
   return (
-    <div className="rounded-md border dashboard-table text-base">
+    <div className="data-table overflow-x-auto rounded-b-xl">
       <Table>
         <TableHeader>
-          <TableRow>
-            <TableHead className="w-[40px]"></TableHead>
+          <TableRow className="border-b border-edge-subtle hover:bg-transparent">
+            <TableHead className="w-12"></TableHead>
             <TableHead>Event</TableHead>
             <TableHead>Started</TableHead>
             <TableHead>Finished</TableHead>
             <TableHead>Duration</TableHead>
-            <TableHead>Network</TableHead>
+            <TableHead className="text-center">Network</TableHead>
             <TableHead>Serial</TableHead>
             <TableHead>Model</TableHead>
             <TableHead>Actions</TableHead>
@@ -126,7 +125,7 @@ export function EventsTable({ events, maxVisible = 50 }: EventsTableProps) {
         <TableBody>
           {visibleEvents.length === 0 ? (
             <TableRow>
-              <TableCell colSpan={9} className="text-center py-8 text-muted-foreground">
+              <TableCell colSpan={9} className="text-center py-16 text-lg text-ink-faint">
                 No events yet. Waiting for webhook data...
               </TableCell>
             </TableRow>
@@ -141,69 +140,70 @@ export function EventsTable({ events, maxVisible = 50 }: EventsTableProps) {
 
               return (
                 <React.Fragment key={event.eventId}>
-                  <TableRow className="hover:bg-muted/50">
-                    <TableCell>
+                  <TableRow className="hover:bg-surface-raised border-0">
+                    <TableCell className="py-3.5 px-4">
                       <Button
                         variant="ghost"
                         size="sm"
-                        className="h-6 w-6 p-0"
+                        className="h-8 w-8 p-0 hover:bg-control-hover rounded-lg"
                         onClick={() => toggleRow(event.eventId)}
                       >
                         {isExpanded ? (
-                          <DashboardIcon icon={ArrowDown01Icon} size={16} />
+                          <DashboardIcon icon={ArrowDown01Icon} size={18} className="text-accent" />
                         ) : (
-                          <DashboardIcon icon={ArrowRight01Icon} size={16} />
+                          <DashboardIcon icon={ArrowRight01Icon} size={18} className="text-ink-muted" />
                         )}
                       </Button>
                     </TableCell>
-                    <TableCell>
-                      <Badge
-                        variant={isStarted ? "default" : "secondary"}
-                        className="dashboard-badge text-base"
-                      >
+                    <TableCell className="py-3.5 px-4">
+                      <span className={`status-badge ${isStarted ? "status-badge-active" : "status-badge-success"}`}>
                         {payload.name}
-                      </Badge>
+                      </span>
                     </TableCell>
-                    <TableCell className="font-mono text-base">
+                    <TableCell className="py-3.5 px-4 mono">
                       {formatTime(payload.started)}
                     </TableCell>
-                    <TableCell className="font-mono text-base">
-                      {isFinished ? formatTime(payload.finished) : "—"}
+                    <TableCell className="py-3.5 px-4 mono">
+                      {isFinished ? formatTime(payload.finished) : <span className="text-ink-ghost">—</span>}
                     </TableCell>
-                    <TableCell className="font-mono text-base">
-                      {isFinished ? formatDuration(payload.duration) : "—"}
+                    <TableCell className="py-3.5 px-4 mono">
+                      {isFinished ? formatDuration(payload.duration) : <span className="text-ink-ghost">—</span>}
                     </TableCell>
-                    <TableCell>
+                    <TableCell className="py-3.5 px-4">
                       {isFinished ? (
                         <NetworkIndicator
                           download={payload.downloadThroughput}
                           upload={payload.uploadThroughput}
                         />
                       ) : (
-                        <span className="text-muted-foreground">—</span>
+                        <span className="text-ink-ghost text-center block">—</span>
                       )}
                     </TableCell>
-                    <TableCell className="font-mono text-base">
+                    <TableCell className="py-3.5 px-4 mono">
                       {payload.serialNumber}
                     </TableCell>
-                    <TableCell>{payload.modelName}</TableCell>
-                    <TableCell>
+                    <TableCell className="py-3.5 px-4 text-ink-muted">
+                      {payload.modelName}
+                    </TableCell>
+                    <TableCell className="py-3.5 px-4">
                       {actions.length > 0 ? (
-                        <span className="text-base">
-                          {actions.length - failedCount}/{actions.length}
+                        <span className="mono">
+                          <span className="text-status-success">{actions.length - failedCount}</span>
+                          <span className="text-ink-ghost">/</span>
+                          <span className="text-ink-muted">{actions.length}</span>
                           {failedCount > 0 && (
-                            <span className="text-destructive ml-1">
+                            <span className="text-status-failure ml-2">
                               ({failedCount} failed)
                             </span>
                           )}
                         </span>
                       ) : (
-                        "—"
+                        <span className="text-ink-ghost">—</span>
                       )}
                     </TableCell>
                   </TableRow>
                   {isExpanded && (
-                    <TableRow className="bg-muted/30">
+                    <TableRow className="bg-surface-raised border-0">
                       <TableCell colSpan={9} className="p-6">
                         <EventDetail payload={payload} />
                       </TableCell>
@@ -226,15 +226,15 @@ function NetworkInfo({ upload, download }: { upload?: number; download?: number 
   const downloadMbps = download !== undefined ? download / 1e6 : undefined;
 
   return (
-    <div className="mb-4 pb-4 border-b border-border">
-      <p className="mb-2 text-base font-medium text-muted-foreground">Network</p>
-      <div className="flex items-center gap-6 text-base">
+    <div className="mb-5 pb-5 border-b border-edge-subtle">
+      <p className="stat-label mb-3">Network</p>
+      <div className="flex items-center gap-8">
         {downloadMbps !== undefined && (() => {
           const quality = getThroughputQuality(downloadMbps, "download");
           return (
-            <div className="flex items-center gap-1.5">
-              <DashboardIcon icon={ArrowDown01Icon} size={14} className="text-muted-foreground" />
-              <span className="font-mono">{downloadMbps.toFixed(1)} Mbps</span>
+            <div className="flex items-center gap-2.5">
+              <DashboardIcon icon={ArrowDown01Icon} size={18} className="text-ink-faint" />
+              <span className="mono text-lg">{downloadMbps.toFixed(1)} Mbps</span>
               <span className={getQualityColor(quality)}>{getQualityLabel(quality)}</span>
             </div>
           );
@@ -242,9 +242,9 @@ function NetworkInfo({ upload, download }: { upload?: number; download?: number 
         {uploadMbps !== undefined && (() => {
           const quality = getThroughputQuality(uploadMbps, "upload");
           return (
-            <div className="flex items-center gap-1.5">
-              <DashboardIcon icon={ArrowUp01Icon} size={14} className="text-muted-foreground" />
-              <span className="font-mono">{uploadMbps.toFixed(1)} Mbps</span>
+            <div className="flex items-center gap-2.5">
+              <DashboardIcon icon={ArrowUp01Icon} size={18} className="text-ink-faint" />
+              <span className="mono text-lg">{uploadMbps.toFixed(1)} Mbps</span>
               <span className={getQualityColor(quality)}>{getQualityLabel(quality)}</span>
             </div>
           );
@@ -258,69 +258,53 @@ function EventDetail({ payload }: { payload: SetupManagerWebhook }) {
   const isFinished = isFinishedWebhook(payload);
 
   return (
-    <div className="text-base">
+    <div>
       {isFinished && (
         <NetworkInfo upload={payload.uploadThroughput} download={payload.downloadThroughput} />
       )}
-      <div className="grid grid-cols-2 gap-5 text-base md:grid-cols-4">
-        <div>
-          <p className="text-lg text-muted-foreground">macOS Version</p>
-          <p className="text-[1.65rem] font-semibold leading-tight">{payload.macOSVersion}</p>
-        </div>
-        <div>
-          <p className="text-lg text-muted-foreground">macOS Build</p>
-          <p className="text-[1.65rem] font-semibold leading-tight">{payload.macOSBuild}</p>
-        </div>
-        <div>
-          <p className="text-lg text-muted-foreground">Model ID</p>
-          <p className="text-[1.65rem] font-semibold leading-tight">{payload.modelIdentifier}</p>
-        </div>
-        <div>
-          <p className="text-lg text-muted-foreground">Setup Manager</p>
-          <p className="text-[1.65rem] font-semibold leading-tight">v{payload.setupManagerVersion}</p>
-        </div>
+      <div className="grid grid-cols-2 gap-5 md:grid-cols-4 lg:grid-cols-6">
+        <DetailItem label="macOS Version" value={payload.macOSVersion} />
+        <DetailItem label="macOS Build" value={payload.macOSBuild} />
+        <DetailItem label="Model ID" value={payload.modelIdentifier} />
+        <DetailItem label="Setup Manager" value={`v${payload.setupManagerVersion}`} />
 
         {isFinished && payload.computerName && (
-          <div>
-            <p className="text-lg text-muted-foreground">Computer Name</p>
-            <p className="text-[1.65rem] font-semibold leading-tight">{payload.computerName}</p>
-          </div>
+          <DetailItem label="Computer Name" value={payload.computerName} />
         )}
 
-        {isFinished && payload.userEntry && (
-          <>
-            {payload.userEntry.userID && (
-              <div>
-                <p className="text-lg text-muted-foreground">User ID</p>
-                <p className="text-[1.65rem] font-semibold leading-tight">{payload.userEntry.userID}</p>
-              </div>
-            )}
-            {payload.userEntry.department && (
-              <div>
-                <p className="text-lg text-muted-foreground">Department</p>
-                <p className="text-[1.65rem] font-semibold leading-tight">{payload.userEntry.department}</p>
-              </div>
-            )}
-          </>
+        {isFinished && payload.userEntry?.userID && (
+          <DetailItem label="User ID" value={payload.userEntry.userID} />
         )}
 
-        {isFinished && payload.enrollmentActions && payload.enrollmentActions.length > 0 && (
-          <div className="col-span-full">
-            <p className="mb-3 text-lg text-muted-foreground">Enrollment Actions</p>
-            <div className="flex flex-wrap gap-2">
-              {payload.enrollmentActions.map((action, idx) => (
-                <Badge
-                  key={idx}
-                  variant={action.status === "finished" ? "default" : "destructive"}
-                  className="dashboard-badge px-4 py-1.5 text-base"
-                >
-                  {action.label}
-                </Badge>
-              ))}
-            </div>
-          </div>
+        {isFinished && payload.userEntry?.department && (
+          <DetailItem label="Department" value={payload.userEntry.department} />
         )}
       </div>
+
+      {isFinished && payload.enrollmentActions && payload.enrollmentActions.length > 0 && (
+        <div className="mt-5 pt-5 border-t border-edge-subtle">
+          <p className="stat-label mb-3">Enrollment Actions</p>
+          <div className="flex flex-wrap gap-2">
+            {payload.enrollmentActions.map((action, idx) => (
+              <span
+                key={idx}
+                className={`status-badge ${action.status === "finished" ? "status-badge-success" : "status-badge-failure"}`}
+              >
+                {action.label}
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function DetailItem({ label, value }: { label: string; value: string }) {
+  return (
+    <div>
+      <p className="stat-label">{label}</p>
+      <p className="text-lg font-medium text-ink mt-1">{value}</p>
     </div>
   );
 }

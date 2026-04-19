@@ -1,4 +1,3 @@
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { DashboardIcon } from "./DashboardIcon";
 import {
   Activity01Icon,
@@ -13,10 +12,19 @@ interface KpiCardsProps {
   finished: number;
   avgDuration: number;
   failedActions: number;
+  successRate: number;
+  total: number;
   onFailedActionsClick?: () => void;
 }
 
-export function KpiCards({ started, finished, avgDuration, failedActions, onFailedActionsClick }: KpiCardsProps) {
+export function KpiCards({
+  started,
+  finished,
+  avgDuration,
+  failedActions,
+  successRate,
+  onFailedActionsClick,
+}: KpiCardsProps) {
   const formatDuration = (seconds: number) => {
     if (seconds < 60) return `${seconds}s`;
     const mins = Math.floor(seconds / 60);
@@ -24,68 +32,103 @@ export function KpiCards({ started, finished, avgDuration, failedActions, onFail
     return `${mins}m ${secs}s`;
   };
 
-  const cards: {
-    title: string;
+  const stages: {
+    label: string;
     value: string | number;
     icon: IconSvgElement;
-    description: string;
-    color: string;
+    status: "active" | "success" | "failure" | "neutral";
     onClick?: () => void;
     glow?: boolean;
+    showSuccessRate?: boolean;
   }[] = [
     {
-      title: "Total Started",
+      label: "Started",
       value: started,
       icon: Activity01Icon,
-      description: "Devices began setup",
-      color: "text-primary",
+      status: "active",
     },
     {
-      title: "Total Finished",
+      label: "Finished",
       value: finished,
       icon: Tick01Icon,
-      description: "Devices completed setup",
-      color: "text-green-500",
+      status: "success",
+      showSuccessRate: true,
     },
     {
-      title: "Avg Duration",
+      label: "Avg Duration",
       value: formatDuration(avgDuration),
       icon: Clock01Icon,
-      description: "Average setup time",
-      color: "text-primary",
+      status: "neutral",
     },
     {
-      title: "Failed Actions",
+      label: "Failed Actions",
       value: failedActions,
       icon: AlertDiamondIcon,
-      description: "Enrollment actions failed",
-      color: failedActions > 0 ? "text-destructive" : "text-muted-foreground",
+      status: failedActions > 0 ? "failure" : "neutral",
       onClick: failedActions > 0 ? onFailedActionsClick : undefined,
       glow: failedActions > 0,
     },
   ];
 
+  const statusColor = {
+    active: "text-jamf-blue",
+    success: "text-jamf-green",
+    failure: "text-jamf-red",
+    neutral: "text-ink-muted",
+  };
+
+  const dotColor = {
+    active: "stage-dot-active",
+    success: "stage-dot-success",
+    failure: "stage-dot-failure",
+    neutral: "stage-dot-idle",
+  };
+
   return (
-    <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-      {cards.map((card) => (
-        <Card
-          key={card.title}
-          className={`border-border/70 bg-card/90 shadow-sm ${
-            card.onClick ? "cursor-pointer transition-colors hover:bg-accent/50" : ""
-          } ${card.glow ? "ring-2 ring-destructive/30 shadow-[0_0_15px_-3px] shadow-destructive/25" : ""}`}
-          onClick={card.onClick}
+    <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-6">
+      {stages.map((stage, idx) => (
+        <div
+          key={stage.label}
+          className={`panel relative p-6 ${
+            stage.onClick ? "cursor-pointer hover:bg-surface-raised transition-colors" : ""
+          } ${stage.glow ? "failure-glow" : ""}`}
+          onClick={stage.onClick}
         >
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
-            <CardTitle className="stat-label text-sm">{card.title}</CardTitle>
-            <div className="flex h-9 w-9 items-center justify-center rounded-full bg-muted/70">
-              <DashboardIcon icon={card.icon} size={18} className={card.color} />
+          {/* Stage indicator dot + label */}
+          <div className="flex items-center gap-2.5 mb-3">
+            <div className={`stage-dot ${dotColor[stage.status]}`} />
+            <span className="stat-label">{stage.label}</span>
+          </div>
+
+          {/* Value + Icon inline */}
+          <div className="flex items-center gap-3">
+            <span className={`stat-value ${statusColor[stage.status]}`}>
+              {stage.value}
+            </span>
+            <DashboardIcon
+              icon={stage.icon}
+              size={28}
+              className={`${statusColor[stage.status]} opacity-40`}
+            />
+          </div>
+
+          {/* Success rate indicator for finished */}
+          {stage.showSuccessRate && (
+            <div className="mt-2 flex items-center gap-2">
+              <span className="stat-delta text-jamf-green">{successRate}%</span>
+              <span className="text-base text-ink-ghost">success rate</span>
             </div>
-          </CardHeader>
-          <CardContent>
-            <div className="stat-value">{card.value}</div>
-            <CardDescription className="mt-1 text-sm">{card.description}</CardDescription>
-          </CardContent>
-        </Card>
+          )}
+
+          {/* Pipeline connector arrow (except last) */}
+          {idx < stages.length - 1 && (
+            <div className="hidden lg:flex absolute -right-5 top-1/2 -translate-y-1/2 z-10 text-ink-ghost">
+              <svg width="16" height="16" viewBox="0 0 16 16">
+                <path d="M4 8h8M8 4l4 4-4 4" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+            </div>
+          )}
+        </div>
       ))}
     </div>
   );

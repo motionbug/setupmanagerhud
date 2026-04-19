@@ -6,7 +6,6 @@ import {
   YAxis,
   CartesianGrid,
   Tooltip,
-  Legend,
   ResponsiveContainer,
 } from "recharts";
 import type { StoredEvent, SetupManagerFinishedWebhook } from "@/types";
@@ -19,8 +18,8 @@ interface EventsChartProps {
 
 type TimeRange = "day" | "week" | "month" | "all";
 
-const SUCCESS_COLOR = "var(--chart-2)";
-const FAILURE_COLOR = "var(--chart-5)";
+const SUCCESS_COLOR = "var(--jamf-green)";
+const FAILURE_COLOR = "var(--jamf-red)";
 
 const TIME_RANGES: { value: TimeRange; label: string }[] = [
   { value: "day", label: "24h" },
@@ -35,7 +34,7 @@ export function EventsChart({ events, embedded = false }: EventsChartProps) {
 
   if (events.length === 0) {
     return (
-      <div className="flex h-[280px] items-center justify-center rounded-lg border border-dashed border-border/70 bg-muted/30 text-muted-foreground">
+      <div className="flex h-64 items-center justify-center rounded-xl border border-dashed border-edge text-ink-faint text-base">
         No event data yet
       </div>
     );
@@ -48,10 +47,10 @@ export function EventsChart({ events, embedded = false }: EventsChartProps) {
           <button
             key={range.value}
             onClick={() => setTimeRange(range.value)}
-            className={`rounded-md px-3 py-1 text-xs font-medium transition-colors ${
+            className={`rounded-full px-5 py-2.5 text-sm font-semibold transition-all ${
               timeRange === range.value
-                ? "bg-primary text-primary-foreground"
-                : "bg-muted text-muted-foreground hover:bg-muted/80"
+                ? "bg-jamf-purple text-white shadow-md"
+                : "text-ink-muted hover:bg-control-hover"
             }`}
           >
             {range.label}
@@ -59,40 +58,49 @@ export function EventsChart({ events, embedded = false }: EventsChartProps) {
         ))}
       </div>
       {chartData.length === 0 ? (
-        <div className="flex h-[240px] items-center justify-center rounded-lg border border-dashed border-border/70 bg-muted/30 text-muted-foreground">
-          No data for selected time range
+        <div className="flex h-56 items-center justify-center rounded-xl border border-dashed border-edge text-ink-faint text-base">
+          No data for selected range
         </div>
       ) : (
         <ResponsiveContainer width="100%" height={240}>
-          <BarChart data={chartData} barGap={0} barCategoryGap="30%">
-            <CartesianGrid strokeDasharray="3 3" vertical={false} className="stroke-muted" />
+          <BarChart data={chartData} barGap={2} barCategoryGap="20%">
+            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--edge-subtle)" />
             <XAxis
               dataKey="label"
-              tick={{ fontSize: 11 }}
-              className="text-muted-foreground"
+              tick={{ fontSize: 13, fill: "var(--ink-faint)" }}
+              tickLine={false}
+              axisLine={{ stroke: "var(--edge-subtle)" }}
               interval="preserveStartEnd"
             />
-            <YAxis tick={{ fontSize: 11 }} allowDecimals={false} width={30} />
+            <YAxis
+              tick={{ fontSize: 13, fill: "var(--ink-faint)" }}
+              tickLine={false}
+              axisLine={false}
+              allowDecimals={false}
+              width={32}
+            />
             <Tooltip
               contentStyle={{
-                backgroundColor: "var(--card)",
-                border: "1px solid var(--border)",
-                borderRadius: "var(--radius)",
+                backgroundColor: "var(--surface-overlay)",
+                border: "1px solid var(--edge)",
+                borderRadius: "12px",
+                fontSize: "14px",
+                padding: "12px 16px",
               }}
+              labelStyle={{ color: "var(--ink)", fontWeight: 600, marginBottom: "4px" }}
             />
-            <Legend />
             <Bar
               dataKey="success"
               name="Success"
               fill={SUCCESS_COLOR}
-              radius={[4, 4, 0, 0]}
+              radius={[6, 6, 0, 0]}
               maxBarSize={40}
             />
             <Bar
               dataKey="failure"
               name="Failure"
               fill={FAILURE_COLOR}
-              radius={[4, 4, 0, 0]}
+              radius={[6, 6, 0, 0]}
               maxBarSize={40}
             />
           </BarChart>
