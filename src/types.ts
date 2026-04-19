@@ -44,13 +44,32 @@ export interface SetupManagerFinishedWebhook extends Omit<SetupManagerStartedWeb
 
 export type SetupManagerWebhook = SetupManagerStartedWebhook | SetupManagerFinishedWebhook;
 
+/**
+ * Type guard to narrow SetupManagerWebhook to SetupManagerFinishedWebhook.
+ * Use this instead of unsafe `as WebhookPayload` casts.
+ */
+export function isFinishedWebhook(
+  payload: SetupManagerWebhook
+): payload is SetupManagerFinishedWebhook {
+  return payload.event === "com.jamf.setupmanager.finished";
+}
+
+/**
+ * Type guard to narrow SetupManagerWebhook to SetupManagerStartedWebhook.
+ */
+export function isStartedWebhook(
+  payload: SetupManagerWebhook
+): payload is SetupManagerStartedWebhook {
+  return payload.event === "com.jamf.setupmanager.started";
+}
+
 export interface StoredEvent {
   payload: SetupManagerWebhook;
   timestamp: number;
   eventId: string;
 }
 
-export interface ValidationResult {
+interface ValidationResult {
   valid: boolean;
   error?: string;
 }
@@ -251,13 +270,6 @@ export function validateWebhookPayload(payload: unknown): ValidationResult {
   }
 
   return { valid: true };
-}
-
-/**
- * Type guard to check if a validated payload is a SetupManagerWebhook
- */
-export function isSetupManagerWebhook(payload: unknown): payload is SetupManagerWebhook {
-  return validateWebhookPayload(payload).valid;
 }
 
 // UI types

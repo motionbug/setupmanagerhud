@@ -1,4 +1,5 @@
-import type { StoredEvent } from "./types.ts";
+import type { StoredEvent } from "./types";
+import { fetchEvents } from "./kv";
 
 interface Env {
   WEBHOOKS: KVNamespace;
@@ -115,24 +116,7 @@ export class DashboardRoom implements DurableObject {
   }
 
   private async sendHistory(ws: WebSocket, limit = 200): Promise<void> {
-    const list = await this.env.WEBHOOKS.list({ limit });
-
-    const events = await Promise.all(
-      list.keys.map(async (key) => {
-        const data = await this.env.WEBHOOKS.get(key.name);
-        if (!data) return null;
-        try {
-          return JSON.parse(data) as StoredEvent;
-        } catch {
-          return null;
-        }
-      })
-    );
-
-    const validEvents = events
-      .filter((e): e is StoredEvent => e !== null)
-      .sort((a, b) => b.timestamp - a.timestamp);
-
+    const validEvents = await fetchEvents(this.env, limit);
     ws.send(JSON.stringify({ type: "history", data: validEvents }));
   }
 }

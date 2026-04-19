@@ -1,16 +1,17 @@
-import { DashboardRoom } from "./DashboardRoom.ts";
+import { DashboardRoom } from "./DashboardRoom";
 import {
   validateWebhookPayload,
   type SetupManagerWebhook,
   type StoredEvent,
-} from "./types.ts";
+} from "./types";
+import { fetchEvents } from "./kv";
 
 export { DashboardRoom };
 
-export interface Env {
+interface Env {
   WEBHOOKS: KVNamespace;
   DASHBOARD_ROOM: DurableObjectNamespace;
-  WEBHOOK_TOKEN?: string;
+  WEBHOOK_SECRET?: string;
   ASSETS?: Fetcher;
   CF_ACCESS_AUD?: string;
   CF_ACCESS_TEAM_DOMAIN?: string;
@@ -19,6 +20,41 @@ export interface Env {
 const SECURITY_HEADERS: Record<string, string> = {
   "X-Content-Type-Options": "nosniff",
   "X-Frame-Options": "DENY",
+
+  // SEC-01: Content-Security-Policy
+  // Dashboard loads: React (bundled), Tailwind CSS (bundled), Figtree font (@fontsource),
+  // recharts (bundled), Radix UI (bundled), HugeIcons (bundled)
+  // WebSocket connections to 'self'
+  // Note: 'unsafe-inline' needed for Tailwind v4 runtime styles and Vite dev mode
+  "Content-Security-Policy": [
+    "default-src 'self'",
+    "script-src 'self' 'unsafe-inline'",
+    "style-src 'self' 'unsafe-inline'",
+    "font-src 'self'",
+    "img-src 'self' data:",
+    "connect-src 'self' wss:",
+    "frame-ancestors 'none'",
+    "base-uri 'self'",
+    "form-action 'self'",
+  ].join("; "),
+
+  // SEC-02: Strict-Transport-Security (per D-03: 1 year with includeSubDomains)
+  "Strict-Transport-Security": "max-age=31536000; includeSubDomains",
+
+  // SEC-03: Referrer-Policy - strict for privacy
+  "Referrer-Policy": "strict-origin-when-cross-origin",
+
+  // SEC-04: Permissions-Policy - disable unused browser features
+  "Permissions-Policy": [
+    "accelerometer=()",
+    "camera=()",
+    "geolocation=()",
+    "gyroscope=()",
+    "magnetometer=()",
+    "microphone=()",
+    "payment=()",
+    "usb=()",
+  ].join(", "),
 };
 
 /**
@@ -198,28 +234,8 @@ async function validateAccessJwt(
 /** Maximum webhook payload size in bytes (8 KB) */
 const MAX_WEBHOOK_PAYLOAD_SIZE = 8192;
 
-async function validateWebhookAuth(
-  request: Request,
-  env: Env,
-): Promise<Response | null> {
-  const webhookToken = env.WEBHOOK_TOKEN?.trim();
-  if (!webhookToken) {
-    return json({ error: "Webhook authentication is not configured" }, 503, request);
-  }
-
-  const authHeader = request.headers.get("Authorization")?.trim();
-  if (!authHeader || !(await timingSafeEqual(authHeader, webhookToken))) {
-    return json({ error: "Unauthorized" }, 401, request);
-  }
-
-  return null;
-}
-
 // POST /webhook
-export async function handleWebhook(request: Request, env: Env): Promise<Response> {
-  const authError = await validateWebhookAuth(request, env);
-  if (authError) return authError;
-
+async function handleWebhook(request: Request, env: Env): Promise<Response> {
   // Reject oversized payloads before parsing
   const contentLength = parseInt(request.headers.get("Content-Length") || "0", 10);
   if (contentLength > MAX_WEBHOOK_PAYLOAD_SIZE) {
@@ -230,6 +246,19 @@ export async function handleWebhook(request: Request, env: Env): Promise<Respons
   const contentType = request.headers.get("Content-Type");
   if (!contentType || !contentType.includes("application/json")) {
     return json({ error: "Content-Type must be application/json" }, 415, request);
+  }
+
+  // Optional: validate webhook token if WEBHOOK_SECRET is set
+  const webhookSecret = env.WEBHOOK_SECRET;
+  if (webhookSecret) {
+    const authHeader = request.headers.get("Authorization");
+    const token = authHeader?.startsWith("Bearer ")
+      ? authHeader.slice(7)
+      : null;
+
+    if (!token || !(await timingSafeEqual(token, webhookSecret))) {
+      return json({ error: "Unauthorized" }, 401, request);
+    }
   }
 
   let payload: unknown;
@@ -248,7 +277,8 @@ export async function handleWebhook(request: Request, env: Env): Promise<Respons
 
   const webhookPayload = payload as SetupManagerWebhook;
   const timestamp = Date.now();
-  const eventId = `${webhookPayload.event}:${webhookPayload.serialNumber}:${timestamp}`;
+  const uuid = crypto.randomUUID();
+  const eventId = `${webhookPayload.event}:${webhookPayload.serialNumber}:${timestamp}:${uuid}`;
 
   const storedEvent: StoredEvent = { payload: webhookPayload, timestamp, eventId };
 
@@ -272,42 +302,13 @@ async function handleEvents(request: Request, env: Env): Promise<Response> {
   const limitParam = url.searchParams.get("limit");
   const limit = Math.min(Math.max(parseInt(limitParam || "100", 10) || 100, 1), 1000);
 
-  const list = await env.WEBHOOKS.list({ limit });
-  const events = await Promise.all(
-    list.keys.map(async (key) => {
-      const data = await env.WEBHOOKS.get(key.name);
-      if (!data) return null;
-      try {
-        return JSON.parse(data) as StoredEvent;
-      } catch {
-        return null;
-      }
-    })
-  );
-
-  const validEvents = events
-    .filter((e): e is StoredEvent => e !== null)
-    .sort((a, b) => b.timestamp - a.timestamp);
-
+  const validEvents = await fetchEvents(env, limit);
   return json(validEvents, 200, request);
 }
 
 // GET /api/stats
 async function handleStats(request: Request, env: Env): Promise<Response> {
-  const list = await env.WEBHOOKS.list({ limit: 1000 });
-  const events = await Promise.all(
-    list.keys.map(async (key) => {
-      const data = await env.WEBHOOKS.get(key.name);
-      if (!data) return null;
-      try {
-        return JSON.parse(data) as StoredEvent;
-      } catch {
-        return null;
-      }
-    })
-  );
-
-  const validEvents = events.filter((e): e is StoredEvent => e !== null);
+  const validEvents = await fetchEvents(env, 1000);
   const startedEvents = validEvents.filter(
     (e) => e.payload.event === "com.jamf.setupmanager.started"
   );
@@ -421,7 +422,7 @@ export default {
       return new Response(null, { headers: getCorsHeaders(request) });
     }
 
-    // Webhook endpoint bypasses Cloudflare Access and uses token auth instead
+    // Webhook endpoint is always open for devices — no Access check
     if (url.pathname === "/webhook" && request.method === "POST") {
       return handleWebhook(request, env);
     }
@@ -444,9 +445,27 @@ export default {
     }
 
     if (env.ASSETS) {
-      return env.ASSETS.fetch(request);
+      const assetResponse = await env.ASSETS.fetch(request);
+      const headers = new Headers(assetResponse.headers);
+      for (const [key, value] of Object.entries(SECURITY_HEADERS)) {
+        headers.set(key, value);
+      }
+      return new Response(assetResponse.body, {
+        status: assetResponse.status,
+        statusText: assetResponse.statusText,
+        headers,
+      });
     }
 
     return new Response("Not Found", { status: 404 });
   },
 };
+
+/** @internal Exported for testing only */
+export { timingSafeEqual as _testTimingSafeEqual };
+
+/** @internal Exported for testing only */
+export { validateAccessJwt as _testValidateAccessJwt };
+
+/** @internal Exported for testing only - Env type for test mocks */
+export type { Env as _TestEnv };

@@ -4,171 +4,242 @@
 @custom-variant dark (&:is(.dark *));
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --color-card: var(--card);
-  --color-card-foreground: var(--card-foreground);
-  --color-popover: var(--popover);
-  --color-popover-foreground: var(--popover-foreground);
-  --color-primary: var(--primary);
-  --color-primary-foreground: var(--primary-foreground);
-  --color-secondary: var(--secondary);
-  --color-secondary-foreground: var(--secondary-foreground);
-  --color-muted: var(--muted);
-  --color-muted-foreground: var(--muted-foreground);
-  --color-accent: var(--accent);
-  --color-accent-foreground: var(--accent-foreground);
-  --color-destructive: var(--destructive);
-  --color-destructive-foreground: var(--destructive-foreground);
-  --color-border: var(--border);
-  --color-input: var(--input);
-  --color-ring: var(--ring);
-  --color-chart-1: var(--chart-1);
-  --color-chart-2: var(--chart-2);
-  --color-chart-3: var(--chart-3);
-  --color-chart-4: var(--chart-4);
-  --color-chart-5: var(--chart-5);
-  --color-sidebar: var(--sidebar);
-  --color-sidebar-foreground: var(--sidebar-foreground);
-  --color-sidebar-primary: var(--sidebar-primary);
-  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
-  --color-sidebar-accent: var(--sidebar-accent);
-  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
-  --color-sidebar-border: var(--sidebar-border);
-  --color-sidebar-ring: var(--sidebar-ring);
-  --radius-sm: calc(var(--radius) - 4px);
-  --radius-md: calc(var(--radius) - 2px);
-  --radius-lg: var(--radius);
-  --radius-xl: calc(var(--radius) + 4px);
+  /* Surface hierarchy */
+  --color-canvas: var(--canvas);
+  --color-surface: var(--surface);
+  --color-surface-raised: var(--surface-raised);
+  --color-surface-overlay: var(--surface-overlay);
+
+  /* Text hierarchy */
+  --color-ink: var(--ink);
+  --color-ink-muted: var(--ink-muted);
+  --color-ink-faint: var(--ink-faint);
+  --color-ink-ghost: var(--ink-ghost);
+
+  /* Borders */
+  --color-edge: var(--edge);
+  --color-edge-subtle: var(--edge-subtle);
+  --color-edge-strong: var(--edge-strong);
+
+  /* Jamf brand colors */
+  --color-jamf-blue: var(--jamf-blue);
+  --color-jamf-green: var(--jamf-green);
+  --color-jamf-red: var(--jamf-red);
+  --color-jamf-purple: var(--jamf-purple);
+  --color-jamf-orange: var(--jamf-orange);
+
+  /* Status colors mapped to Jamf brand */
+  --color-status-success: var(--jamf-green);
+  --color-status-warning: var(--jamf-orange);
+  --color-status-failure: var(--jamf-red);
+  --color-status-active: var(--jamf-blue);
+
+  /* Brand accent — Jamf purple */
+  --color-accent: var(--jamf-purple);
+  --color-accent-muted: var(--accent-muted);
+
+  /* Interactive */
+  --color-control: var(--control);
+  --color-control-hover: var(--control-hover);
+  --color-focus-ring: var(--focus-ring);
+
+  /* Legacy mappings for shadcn components */
+  --color-background: var(--canvas);
+  --color-foreground: var(--ink);
+  --color-card: var(--surface);
+  --color-card-foreground: var(--ink);
+  --color-popover: var(--surface-overlay);
+  --color-popover-foreground: var(--ink);
+  --color-primary: var(--jamf-purple);
+  --color-primary-foreground: oklch(1 0 0);
+  --color-secondary: var(--surface-raised);
+  --color-secondary-foreground: var(--ink);
+  --color-muted: var(--surface-raised);
+  --color-muted-foreground: var(--ink-muted);
+  --color-destructive: var(--jamf-red);
+  --color-destructive-foreground: oklch(0.98 0 0);
+  --color-border: var(--edge);
+  --color-input: var(--control);
+  --color-ring: var(--focus-ring);
+
+  /* Charts — Jamf colors */
+  --color-chart-1: var(--jamf-purple);
+  --color-chart-2: var(--jamf-green);
+  --color-chart-3: var(--jamf-blue);
+  --color-chart-4: var(--jamf-orange);
+  --color-chart-5: var(--jamf-red);
+
+  /* Radius scale — macOS-friendly rounded corners */
+  --radius-sm: 0.5rem;
+  --radius-md: 0.75rem;
+  --radius-lg: 1rem;
+  --radius-xl: 1.25rem;
+  --radius: 0.75rem;
+
+  /* Typography */
   --font-sans: "Figtree Variable", "Figtree", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: ui-monospace, "SF Mono", "Cascadia Mono", "Segoe UI Mono", monospace;
 }
 
 :root {
-  --background: oklch(0.968 0.008 247);
-  --foreground: oklch(0.23 0.03 252);
-  --card: oklch(0.985 0.006 240);
-  --card-foreground: oklch(0.145 0 0);
-  --popover: oklch(0.99 0.004 240);
-  --popover-foreground: oklch(0.145 0 0);
-  --primary: oklch(0.49 0.14 257);
-  --primary-foreground: oklch(0.98 0.01 240);
-  --secondary: oklch(0.935 0.018 244);
-  --secondary-foreground: oklch(0.205 0 0);
-  --muted: oklch(0.928 0.014 244);
-  --muted-foreground: oklch(0.46 0.03 250);
-  --accent: oklch(0.92 0.03 246);
-  --accent-foreground: oklch(0.205 0 0);
-  --destructive: oklch(0.57 0.23 28);
-  --destructive-foreground: oklch(0.98 0.01 240);
-  --border: oklch(0.84 0.02 244);
-  --input: oklch(0.86 0.02 244);
-  --ring: oklch(0.67 0.07 258);
-  --chart-1: oklch(0.78 0.11 251);
-  --chart-2: oklch(0.66 0.19 257);
-  --chart-3: oklch(0.58 0.21 261);
-  --chart-4: oklch(0.52 0.2 264);
-  --chart-5: oklch(0.7 0.17 72);
-  --radius: 0.875rem;
-  --sidebar: oklch(0.985 0 0);
-  --sidebar-foreground: oklch(0.145 0 0);
-  --sidebar-primary: oklch(0.205 0 0);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.97 0 0);
-  --sidebar-accent-foreground: oklch(0.205 0 0);
-  --sidebar-border: oklch(0.922 0 0);
-  --sidebar-ring: oklch(0.708 0 0);
+  /* Light mode — clean white like Jamf */
+  --canvas: oklch(0.97 0.003 265);
+  --surface: oklch(1 0 0);
+  --surface-raised: oklch(0.98 0.002 265);
+  --surface-overlay: oklch(1 0 0);
+
+  --ink: oklch(0.2 0.015 265);
+  --ink-muted: oklch(0.45 0.01 265);
+  --ink-faint: oklch(0.55 0.008 265);
+  --ink-ghost: oklch(0.7 0.005 265);
+
+  --edge: oklch(0.9 0.008 265);
+  --edge-subtle: oklch(0.94 0.005 265);
+  --edge-strong: oklch(0.85 0.01 265);
+
+  /* Jamf brand colors — vibrant and modern */
+  --jamf-blue: oklch(0.59 0.2 255);
+  --jamf-green: oklch(0.64 0.2 145);
+  --jamf-red: oklch(0.58 0.22 25);
+  --jamf-purple: oklch(0.55 0.25 295);
+  --jamf-orange: oklch(0.72 0.18 55);
+
+  --accent-muted: oklch(0.7 0.18 295);
+
+  --control: oklch(0.97 0.004 265);
+  --control-hover: oklch(0.94 0.006 265);
+  --focus-ring: oklch(0.55 0.25 295);
 }
 
 .dark {
-  --background: oklch(0.145 0 0);
-  --foreground: oklch(0.985 0 0);
-  --card: oklch(0.205 0 0);
-  --card-foreground: oklch(0.985 0 0);
-  --popover: oklch(0.205 0 0);
-  --popover-foreground: oklch(0.985 0 0);
-  --primary: oklch(0.87 0.00 0);
-  --primary-foreground: oklch(0.205 0 0);
-  --secondary: oklch(0.269 0 0);
-  --secondary-foreground: oklch(0.985 0 0);
-  --muted: oklch(0.269 0 0);
-  --muted-foreground: oklch(0.708 0 0);
-  --accent: oklch(0.371 0 0);
-  --accent-foreground: oklch(0.985 0 0);
-  --destructive: oklch(0.704 0.191 22.216);
-  --destructive-foreground: oklch(0.985 0 0);
-  --border: oklch(1 0 0 / 10%);
-  --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.556 0 0);
-  --chart-1: oklch(0.78 0.11 251);
-  --chart-2: oklch(0.7 0.18 257);
-  --chart-3: oklch(0.64 0.2 261);
-  --chart-4: oklch(0.58 0.2 264);
-  --chart-5: oklch(0.78 0.15 80);
-  --sidebar: oklch(0.205 0 0);
-  --sidebar-foreground: oklch(0.985 0 0);
-  --sidebar-primary: oklch(0.488 0.243 264.376);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.269 0 0);
-  --sidebar-accent-foreground: oklch(0.985 0 0);
-  --sidebar-border: oklch(1 0 0 / 10%);
-  --sidebar-ring: oklch(0.556 0 0);
+  /* Dark mode — rich Jamf dark */
+  --canvas: oklch(0.14 0.012 265);
+  --surface: oklch(0.18 0.01 265);
+  --surface-raised: oklch(0.22 0.008 265);
+  --surface-overlay: oklch(0.25 0.006 265);
+
+  --ink: oklch(0.95 0.005 265);
+  --ink-muted: oklch(0.72 0.008 265);
+  --ink-faint: oklch(0.55 0.006 265);
+  --ink-ghost: oklch(0.4 0.004 265);
+
+  --edge: oklch(0.3 0.01 265 / 70%);
+  --edge-subtle: oklch(0.26 0.006 265 / 50%);
+  --edge-strong: oklch(0.38 0.012 265);
+
+  /* Jamf brand colors — brighter for dark mode */
+  --jamf-blue: oklch(0.68 0.18 255);
+  --jamf-green: oklch(0.72 0.18 145);
+  --jamf-red: oklch(0.68 0.2 25);
+  --jamf-purple: oklch(0.68 0.22 295);
+  --jamf-orange: oklch(0.78 0.16 55);
+
+  --accent-muted: oklch(0.55 0.15 295);
+
+  --control: oklch(0.24 0.008 265);
+  --control-hover: oklch(0.28 0.01 265);
+  --focus-ring: oklch(0.68 0.22 295);
 }
 
 @layer base {
   * {
-    @apply border-border outline-ring/50;
+    @apply border-edge outline-focus-ring/50;
   }
   body {
-    @apply bg-background text-foreground antialiased;
-    background-image:
-      radial-gradient(circle at 8% 8%, oklch(0.91 0.06 248 / 0.22), transparent 38%),
-      radial-gradient(circle at 92% 0%, oklch(0.92 0.035 190 / 0.18), transparent 34%),
-      linear-gradient(to bottom, oklch(0.968 0.008 247), oklch(0.954 0.01 246));
+    @apply bg-canvas text-ink antialiased;
   }
-}
-
-/* Dashboard font size overrides — readable at a glance */
-@layer base {
   html {
-    font-size: 16px;
-  }
-  body {
-    @apply text-base leading-relaxed;
+    font-size: 17px;
   }
 }
 
 @layer components {
-  /* KPI stat numbers should be prominent */
+  /* Pipeline stage indicators */
+  .stage-dot {
+    @apply w-3 h-3 rounded-full;
+  }
+  .stage-dot-success { @apply bg-jamf-green; }
+  .stage-dot-warning { @apply bg-jamf-orange; }
+  .stage-dot-failure { @apply bg-jamf-red; }
+  .stage-dot-active { @apply bg-jamf-blue; }
+  .stage-dot-idle { @apply bg-ink-ghost; }
+
+  /* Stat display — prominent numbers */
   .stat-value {
-    @apply text-4xl font-semibold tracking-tight;
+    @apply text-5xl font-bold tracking-tight tabular-nums;
   }
   .stat-label {
-    @apply text-sm font-semibold text-muted-foreground uppercase tracking-wide;
+    @apply text-sm font-semibold text-ink-muted uppercase tracking-wider;
+  }
+  .stat-delta {
+    @apply text-lg font-semibold tabular-nums;
   }
 
-  /* Table text needs to be scannable */
-  .dashboard-table {
+  /* Data table — readable */
+  .data-table {
     @apply text-base;
   }
-  .dashboard-table th {
-    @apply text-sm font-semibold uppercase tracking-wider text-muted-foreground;
+  .data-table th {
+    @apply text-sm font-medium text-ink-faint uppercase tracking-wider py-3 px-4;
   }
-  .dashboard-table td {
-    @apply py-4;
+  .data-table td {
+    @apply py-3.5 px-4 border-t border-edge-subtle;
   }
-
-  /* Chart titles */
-  .chart-title {
-    @apply text-lg font-semibold;
+  .data-table tr:hover td {
+    @apply bg-surface-raised;
   }
 
-  /* Header */
-  .dashboard-header {
-    @apply text-2xl font-semibold tracking-tight md:text-[1.9rem];
+  /* Monospace data */
+  .mono {
+    @apply font-mono text-base tabular-nums;
   }
 
-  /* Badges should be readable */
-  .dashboard-badge {
-    @apply text-xs font-medium px-3 py-1;
+  /* Section headers */
+  .section-title {
+    @apply text-base font-bold text-ink uppercase tracking-wider;
   }
+
+  /* Badges — readable */
+  .status-badge {
+    @apply inline-flex items-center gap-2 px-3 py-1 text-sm font-semibold rounded-lg;
+  }
+  .status-badge-success {
+    @apply bg-jamf-green/15 text-jamf-green;
+  }
+  .status-badge-failure {
+    @apply bg-jamf-red/15 text-jamf-red;
+  }
+  .status-badge-active {
+    @apply bg-jamf-blue/15 text-jamf-blue;
+  }
+  .status-badge-neutral {
+    @apply bg-surface-raised text-ink-muted;
+  }
+
+  /* Card surfaces — soft rounded */
+  .panel {
+    @apply bg-surface border border-edge rounded-2xl shadow-sm;
+  }
+  .panel-header {
+    @apply px-6 py-5 border-b border-edge-subtle;
+  }
+  .panel-body {
+    @apply p-6;
+  }
+
+  /* Connection indicator */
+  .connection-live {
+    @apply w-2.5 h-2.5 rounded-full bg-jamf-green;
+    animation: pulse-live 2s ease-in-out infinite;
+  }
+  @keyframes pulse-live {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.5; }
+  }
+
+  /* Failure glow — attention-grabbing */
+  .failure-glow {
+    box-shadow: 0 0 0 2px var(--jamf-red), 0 0 24px -4px oklch(0.58 0.22 25 / 0.4);
+  }
+
 }

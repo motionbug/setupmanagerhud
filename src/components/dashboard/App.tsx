@@ -8,9 +8,8 @@ import { Filters } from "./Filters";
 import { ConnectionStatus } from "./ConnectionStatus";
 import { ThemeToggle } from "./ThemeToggle";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import type { FilterState, WebhookPayload } from "@/types";
+import type { FilterState } from "@/types";
+import { isFinishedWebhook } from "@/types";
 
 export function App() {
   const { connected, events, stats } = useWebSocket();
@@ -24,7 +23,7 @@ export function App() {
 
   const filteredEvents = React.useMemo(() => {
     return events.filter((event) => {
-      const payload = event.payload as WebhookPayload;
+      const payload = event.payload;
 
       if (filters.eventType === "started" && payload.event !== "com.jamf.setupmanager.started") {
         return false;
@@ -33,6 +32,9 @@ export function App() {
         return false;
       }
       if (filters.eventType === "failed") {
+        if (!isFinishedWebhook(payload)) {
+          return false;
+        }
         const actions = payload.enrollmentActions || [];
         if (!actions.some((a) => a.status === "failed")) {
           return false;
@@ -57,12 +59,14 @@ export function App() {
 
       if (filters.search) {
         const searchLower = filters.search.toLowerCase();
+        const userID = isFinishedWebhook(payload) ? payload.userEntry?.userID : undefined;
+        const computerName = isFinishedWebhook(payload) ? payload.computerName : undefined;
         const searchableFields = [
           payload.serialNumber,
           payload.modelName,
-          payload.computerName,
+          computerName,
           payload.macOSVersion,
-          payload.userEntry?.userID,
+          userID,
         ]
           .filter(Boolean)
           .join(" ")
@@ -78,9 +82,9 @@ export function App() {
 
   if (!connected && events.length === 0) {
     return (
-      <div className="min-h-screen bg-background">
+      <div className="min-h-screen bg-canvas">
         <Header connected={false} />
-        <main className="mx-auto max-w-7xl px-6 py-8 md:px-8">
+        <main className="mx-auto max-w-[1600px] px-6 py-8">
           <DashboardSkeleton />
         </main>
       </div>
@@ -88,87 +92,51 @@ export function App() {
   }
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-canvas">
       <Header connected={connected} />
-      <main className="mx-auto max-w-7xl px-6 py-8 md:px-8">
+      <main className="mx-auto max-w-[1600px] px-6 py-8">
         <div className="space-y-8">
-          <Card className="border-border/70 bg-card/90 shadow-sm">
-            <CardHeader className="pb-4">
-              <CardTitle className="text-3xl font-semibold tracking-tight md:text-4xl">
-                Setup Manager Activity Overview
-              </CardTitle>
-              <CardDescription className="text-base md:text-lg">
-                Track active setup workflows, completion trends, and failure points in real time.
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="flex flex-wrap items-center gap-2 pt-0">
-              <Badge variant="secondary" className="dashboard-badge text-sm">
-                {stats.total} total events
-              </Badge>
-              <Badge variant="secondary" className="dashboard-badge text-sm">
-                {stats.successRate}% action success
-              </Badge>
-              <Badge variant={stats.failedActions > 0 ? "destructive" : "secondary"} className="dashboard-badge text-sm">
-                {stats.failedActions} failed actions
-              </Badge>
-            </CardContent>
-          </Card>
-
+          {/* Pipeline Stats */}
           <KpiCards
             started={stats.started}
             finished={stats.finished}
             avgDuration={stats.avgDuration}
             failedActions={stats.failedActions}
+            successRate={stats.successRate}
+            total={stats.total}
+            onFailedActionsClick={() => setFilters((f) => ({ ...f, eventType: "failed" }))}
           />
 
-          <div className="grid gap-6 xl:grid-cols-2">
-            <Card className="border-border/70 bg-card/90 shadow-sm">
-              <CardHeader>
-                <CardTitle className="text-xl font-semibold">Event Timeline</CardTitle>
-                <CardDescription className="text-sm md:text-base">
-                  Started and finished activity grouped over time.
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="pt-0">
+          {/* Charts Row */}
+          <div className="grid gap-6 lg:grid-cols-2">
+            <div className="panel">
+              <div className="panel-header flex items-center justify-between">
+                <span className="section-title">Enrollment Outcomes</span>
+              </div>
+              <div className="panel-body">
                 <EventsChart events={filteredEvents} embedded />
-              </CardContent>
-            </Card>
-            <Card className="border-border/70 bg-card/90 shadow-sm">
-              <CardHeader>
-                <CardTitle className="text-xl font-semibold">Action Quality</CardTitle>
-                <CardDescription className="text-sm md:text-base">
-                  Most frequent enrollment actions and failure counts.
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="pt-0">
+              </div>
+            </div>
+            <div className="panel">
+              <div className="panel-header flex items-center justify-between">
+                <span className="section-title">Action Quality</span>
+              </div>
+              <div className="panel-body">
                 <ActionsChart events={filteredEvents} embedded />
-              </CardContent>
-            </Card>
+              </div>
+            </div>
           </div>
 
-          <Card className="border-border/70 bg-card/90 shadow-sm">
-            <CardHeader className="pb-4">
-              <CardTitle className="text-xl font-semibold">Filter & Export</CardTitle>
-              <CardDescription className="text-sm md:text-base">
-                Narrow down events to find specific devices, versions, and outcomes.
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="pt-0">
+          {/* Events Section */}
+          <div className="panel">
+            <div className="panel-header flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+              <span className="section-title">Recent Events</span>
               <Filters filters={filters} onFiltersChange={setFilters} events={events} />
-            </CardContent>
-          </Card>
-
-          <Card className="border-border/70 bg-card/90 shadow-sm">
-            <CardHeader className="pb-4">
-              <CardTitle className="text-xl font-semibold">Recent Events</CardTitle>
-              <CardDescription className="text-sm md:text-base">
-                Expanded rows show network and enrollment details per device.
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="pt-0">
+            </div>
+            <div className="p-0">
               <EventsTable events={filteredEvents} />
-            </CardContent>
-          </Card>
+            </div>
+          </div>
         </div>
       </main>
       <PoweredByJamf />
@@ -178,15 +146,13 @@ export function App() {
 
 function Header({ connected }: { connected: boolean }) {
   return (
-    <header className="sticky top-0 z-50 w-full border-b border-border/70 bg-background/85 backdrop-blur supports-[backdrop-filter]:bg-background/70">
-      <div className="mx-auto flex min-h-16 max-w-7xl items-center justify-between px-6 py-3">
-        <div className="flex items-center gap-3 md:gap-4">
-          <h1 className="dashboard-header">Setup Manager HUD</h1>
+    <header className="sticky top-0 z-50 w-full border-b border-edge bg-surface/95 backdrop-blur supports-[backdrop-filter]:bg-surface/80">
+      <div className="mx-auto flex h-16 max-w-[1600px] items-center justify-between px-6">
+        <div className="flex items-center gap-5">
+          <h1 className="text-2xl font-semibold tracking-tight text-ink">Setup Manager HUD</h1>
           <ConnectionStatus connected={connected} />
         </div>
-        <div className="flex items-center gap-4">
-          <ThemeToggle />
-        </div>
+        <ThemeToggle />
       </div>
     </header>
   );
@@ -194,36 +160,31 @@ function Header({ connected }: { connected: boolean }) {
 
 function DashboardSkeleton() {
   return (
-    <div className="space-y-6">
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        {[...Array(4)].map((_, i) => (
-          <Skeleton key={i} className="h-[120px]" />
-        ))}
+    <div className="space-y-8">
+      <Skeleton className="h-32 rounded-xl" />
+      <div className="grid gap-6 lg:grid-cols-2">
+        <Skeleton className="h-80 rounded-xl" />
+        <Skeleton className="h-80 rounded-xl" />
       </div>
-      <div className="grid gap-6 md:grid-cols-2">
-        <Skeleton className="h-[280px]" />
-        <Skeleton className="h-[280px]" />
-      </div>
-      <Skeleton className="h-[60px]" />
-      <Skeleton className="h-[400px]" />
+      <Skeleton className="h-[500px] rounded-xl" />
     </div>
   );
 }
 
 function PoweredByJamf() {
   return (
-    <div className="fixed bottom-4 right-4 z-50 rounded-full border border-border/80 bg-card/90 px-3 py-2 text-xs font-semibold text-muted-foreground shadow-sm backdrop-blur">
+    <div className="fixed bottom-4 right-4 z-50 rounded-xl border border-edge bg-surface/90 px-4 py-2 text-sm font-medium text-ink-muted backdrop-blur shadow-sm">
       <span className="inline-flex items-center gap-2">
         Powered by Jamf
         <img
           src="/jamf-icon-white.svg"
           alt="Jamf"
-          className="hidden h-[1.05em] w-auto dark:block"
+          className="hidden h-4 w-auto dark:block"
         />
         <img
           src="/jamf-icon-dark.svg"
           alt="Jamf"
-          className="block h-[1.05em] w-auto dark:hidden"
+          className="block h-4 w-auto dark:hidden"
         />
       </span>
     </div>
