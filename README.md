@@ -96,6 +96,17 @@ GitHub Actions needs permission to deploy to your Cloudflare account. This is do
 5. Create your KV namespace and bind it to your Worker (see [KV Namespace](#kv-namespace-required) — use Option B for CLI)
 6. Go to the **Actions** tab in your fork, select **Deploy to Cloudflare Workers**, and click **Run workflow**
 
+## Security Setup
+
+Setup Manager HUD supports authentication to protect the dashboard and webhook token validation to ensure only your devices can send enrollment events.
+
+> [!TIP]
+> **Full security setup guide:** [Security](https://github.com/motionbug/setupmanagerhud/wiki/Security) covers webhook token configuration, Cloudflare Access setup, and rate limiting.
+
+- **Cloudflare Access** protects the dashboard — [setup guide](https://github.com/motionbug/setupmanagerhud/wiki/Security#cloudflare-access-setup)
+- **Webhook tokens** validate device requests — [configuration guide](https://github.com/motionbug/setupmanagerhud/wiki/Security#webhook-token-setup-required-for-production)
+- **Rate limiting** prevents abuse — [WAF rules guide](https://github.com/motionbug/setupmanagerhud/wiki/Security#rate-limiting-the-webhook-endpoint)
+
 ## Configuration
 
 ### KV Namespace (Required)
