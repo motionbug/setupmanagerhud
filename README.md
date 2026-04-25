@@ -211,6 +211,9 @@ curl -X POST https://setupmanagerhud.<your-subdomain>.workers.dev/webhook \
   }'
 ```
 
+> [!TIP]
+> **Advanced configuration:** See the [Configuration](https://github.com/motionbug/setupmanagerhud/wiki/Configuration) wiki page for environment variables, wrangler.toml reference, and health check endpoints.
+
 ## Local Development
 
 ```bash
