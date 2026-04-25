@@ -11,7 +11,7 @@ Transform user documentation to highlight v1.0 security features (especially web
 - Decimal phases (2.1, 2.2): Urgent insertions (marked with INSERTED)
 
 - [x] **Phase 1: Wiki Foundation** - Create wiki structure with navigation (Home + Sidebar) *(completed 2026-04-19)*
-- [ ] **Phase 2: Wiki Content** - Create security-first content pages with webhook token prominent
+- [x] **Phase 2: Wiki Content** - Create security-first content pages with webhook token prominent *(completed 2026-04-20)*
 - [ ] **Phase 3: README Integration** - Slim README and add wiki links
 
 ## Phase Details
@@ -54,7 +54,10 @@ Plans:
   2. Detailed configuration content moved to wiki, replaced with links
   3. Quick Start section remains self-sufficient for basic deployment
   4. README is noticeably shorter than current 510 lines
-**Plans**: TBD
+**Plans**: 1 plan
+
+Plans:
+- [ ] 03-01-PLAN.md — Slim README with Security Setup section and wiki links
 
 ## Progress
 
@@ -65,4 +68,4 @@ Phases execute in numeric order: 1 -> 2 -> 3
 |-------|----------------|--------|-----------|
 | 1. Wiki Foundation | 1/1 | Complete | 2026-04-19 |
 | 2. Wiki Content | 2/2 | Complete | 2026-04-20 |
-| 3. README Integration | 0/0 | Not started | - |
+| 3. README Integration | 0/1 | Ready | - |
