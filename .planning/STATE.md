@@ -72,11 +72,11 @@ None yet.
 
 ## Deferred Items
 
-Items acknowledged and carried forward from previous milestone close:
+Items acknowledged and deferred at milestone close on 2026-04-25:
 
 | Category | Item | Status | Deferred At |
 |----------|------|--------|-------------|
-| *(none)* | | | |
+| verification | Phase 02 wiki pages need manual push to GitHub | human_needed | 2026-04-25 |
 
 ## Session Continuity
 
