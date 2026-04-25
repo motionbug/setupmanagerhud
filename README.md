@@ -38,7 +38,7 @@ Setup Manager sends webhook events during macOS device provisioning. This dashbo
 
 After clicking Deploy, you'll need to:
 - Create a KV namespace and bind it to your Worker (see [KV Namespace](#kv-namespace-required)) — no CLI needed, this is done entirely in the Cloudflare dashboard
-- Optionally [secure the dashboard](#securing-the-dashboard) with Cloudflare Access
+- Optionally [secure the dashboard](#security-setup) with Cloudflare Access
 
 ### Option 2: Manual Deploy
 
@@ -72,7 +72,7 @@ npm run deploy
 
 Your dashboard is now live at `https://setupmanagerhud.<your-subdomain>.workers.dev`
 
-**Next step:** [Secure the dashboard](#securing-the-dashboard) so only you can access it.
+**Next step:** [Secure the dashboard](#security-setup) so only you can access it.
 
 ### Option 3: GitHub Actions
 
@@ -95,6 +95,17 @@ GitHub Actions needs permission to deploy to your Cloudflare account. This is do
    - Add `CLOUDFLARE_ACCOUNT_ID` with the ID from step 3
 5. Create your KV namespace and bind it to your Worker (see [KV Namespace](#kv-namespace-required) — use Option B for CLI)
 6. Go to the **Actions** tab in your fork, select **Deploy to Cloudflare Workers**, and click **Run workflow**
+
+## Security Setup
+
+Setup Manager HUD supports authentication to protect the dashboard and webhook token validation to ensure only your devices can send enrollment events.
+
+> [!TIP]
+> **Full security setup guide:** [Security](https://github.com/motionbug/setupmanagerhud/wiki/Security) covers webhook token configuration, Cloudflare Access setup, and rate limiting.
+
+- **Cloudflare Access** protects the dashboard — [setup guide](https://github.com/motionbug/setupmanagerhud/wiki/Security#cloudflare-access-setup)
+- **Webhook tokens** validate device requests — [configuration guide](https://github.com/motionbug/setupmanagerhud/wiki/Security#webhook-token-setup-required-for-production)
+- **Rate limiting** prevents abuse — [WAF rules guide](https://github.com/motionbug/setupmanagerhud/wiki/Security#rate-limiting-the-webhook-endpoint)
 
 ## Configuration
 
@@ -176,7 +187,8 @@ Remember when either the started or finished key is missing, no webhook will be 
 
 Setup Manager will POST enrollment events to this endpoint. They'll appear on the dashboard in real-time.
 
-> **Note:** The `/webhook` endpoint is excluded from authentication (see below) so devices can POST without credentials.
+> [!NOTE]
+> To require authentication on webhook requests, see [Webhook Token Setup](https://github.com/motionbug/setupmanagerhud/wiki/Security#webhook-token-setup-required-for-production) in the wiki.
 
 ### Test with a Sample Webhook
 
@@ -199,207 +211,8 @@ curl -X POST https://setupmanagerhud.<your-subdomain>.workers.dev/webhook \
   }'
 ```
 
-## Securing the Dashboard
-
-The dashboard displays device enrollment data that you probably don't want public. **Cloudflare Access** adds authentication in front of the dashboard, and the Worker validates the Access JWT to ensure requests aren't bypassed.
-
-Cloudflare Access is free for up to 50 users. It sits at Cloudflare's edge — before requests even reach your Worker. Setup takes about 5 minutes.
-
-### How It Works
-
-```
-User -> Cloudflare Access (login gate) -> Dashboard (Worker)
-Device -> POST /webhook (bypasses Access) -> Worker -> KV
-```
-
-- **Dashboard visitors** must authenticate before they can see anything
-- **Setup Manager devices** POST to `/webhook` which bypasses authentication entirely
-- **WebSocket connections** to `/ws` are also protected - only authenticated users can connect
-
-### Step-by-Step Setup
-
-#### 1. Enable Cloudflare Zero Trust (one time)
-
-1. Log in to the [Cloudflare dashboard](https://dash.cloudflare.com)
-2. Go to **Zero Trust** in the left sidebar (or visit [one.dash.cloudflare.com](https://one.dash.cloudflare.com))
-3. If this is your first time, choose a team name and select the **Free plan** (up to 50 users)
-4. Complete the onboarding - no payment is required for the free tier
-
-#### 2. Add an Authentication Method
-
-1. In Zero Trust, go to **Settings -> Authentication**
-2. Under **Login methods**, the **One-time PIN** option is enabled by default - this sends a code to the user's email, no identity provider needed
-3. *(Optional)* To use an identity provider instead, click **Add new** and configure one of:
-   - **GitHub** - good for open source projects
-   - **Google** - if you use Google Workspace
-   - **Okta / Azure AD / SAML** - for enterprise environments
-   - You can enable multiple methods and let users choose
-
-#### 3. Create the Access Application (protect the dashboard)
-
-1. In Zero Trust, go to **Access -> Applications**
-2. Click **Add an application** -> select **Self-hosted**
-3. Configure:
-   - **Application name:** `Setup Manager HUD`
-   - **Session duration:** `24 hours` (or your preference)
-   - **Application domain:** `setupmanagerhud.<your-subdomain>.workers.dev`
-     - If using a custom domain, enter that instead
-4. Click **Next** to configure the access policy
-
-#### 4. Create an Allow Policy (who can access the dashboard)
-
-1. **Policy name:** `Allow authorized users`
-2. **Action:** `Allow`
-3. **Include rule - pick one:**
-
-| Who should access it? | Include rule | Value |
-|-----------------------|-------------|-------|
-| Just you | Emails | `your@email.com` |
-| Your team | Email domain | `yourcompany.com` |
-| Specific people | Emails | `alice@example.com`, `bob@example.com` |
-| GitHub org members | GitHub organization | `your-org-name` |
-
-4. Click **Next**, then **Add application**
-
-#### 5. Enable JWT Validation in Your Worker
-
-After creating the Access application, Cloudflare shows you two values:
-
-- **Audience (aud)** — a long hex string that identifies your Access application
-- **JWKs URL** — looks like `https://<your-team>.cloudflareaccess.com/cdn-cgi/access/certs`
-
-Your Worker uses these to verify that incoming requests have a valid Cloudflare Access token. Without this step, someone could bypass the Access login page and hit your Worker directly.
-
-Open `wrangler.toml` and **uncomment** the `[vars]` section, then fill in your values:
-
-```toml
-[vars]
-CF_ACCESS_AUD = "paste-your-audience-tag-here"
-CF_ACCESS_TEAM_DOMAIN = "your-team.cloudflareaccess.com"
-```
-
-These lines are commented out by default so that deploys work without Cloudflare Access configured.
-
-The team domain is the hostname from the JWKs URL (everything between `https://` and `/cdn-cgi/...`).
-
-Redeploy after saving:
-
-```bash
-npm run deploy
-```
-
-> **Note:** If these values are left empty, the Worker skips JWT validation. The dashboard will still work but won't verify that requests came through Cloudflare Access.
-
-#### 6. Create a Bypass Policy for the Webhook Endpoint
-
-This is critical - without this, Setup Manager devices won't be able to POST enrollment data.
-
-1. In the application you just created, go to the **Policies** tab
-2. Click **Add a policy**
-3. Configure:
-   - **Policy name:** `Bypass webhook`
-   - **Action:** `Bypass`
-   - **Include rule:** Select **Everyone**
-4. Under **Assign policy to paths**, add:
-   - Path: `/webhook`
-5. Save the policy
-6. **Make sure this Bypass policy is listed ABOVE the Allow policy** - drag to reorder if needed (Bypass and Service Auth policies are evaluated first)
-
-#### 7. Verify It Works
-
-**Dashboard (should require login):**
-```bash
-# This should redirect to a Cloudflare Access login page
-curl -I https://setupmanagerhud.<your-subdomain>.workers.dev
-# Expected: 302 redirect to <your-team>.cloudflareaccess.com
-```
-
-**Webhook (should pass through without auth):**
-```bash
-# This should return 200 - no login required
-curl -X POST https://setupmanagerhud.<your-subdomain>.workers.dev/webhook \
-  -H "Content-Type: application/json" \
-  -d '{"name":"Started","event":"com.jamf.setupmanager.started","timestamp":"2025-01-01T00:00:00Z","started":"2025-01-01T00:00:00Z","modelName":"Test Mac","modelIdentifier":"Mac15,3","macOSBuild":"24A335","macOSVersion":"15.0","serialNumber":"TEST001","setupManagerVersion":"2.0.0"}'
-# Expected: 200 OK
-```
-
-### Optional: Webhook Token Validation
-
-This feature adds a shared secret between Setup Manager and your Worker, so only your devices can POST enrollment events. It prevents unauthorized payloads from appearing on your dashboard.
-
-**1.** Add a secret to your Worker:
-
-```bash
-npx wrangler secret put WEBHOOK_SECRET
-# Enter a random string when prompted (e.g., output of: openssl rand -hex 24)
-```
-
-**2.** Configure Setup Manager to send the same secret as a Bearer token. In your Setup Manager configuration plist, add a `token` key to each webhook:
-
-```xml
-<key>webhooks</key>
-<dict>
-  <key>started</key>
-  <dict>
-    <key>url</key>
-    <string>https://setupmanagerhud.<your-subdomain>.workers.dev/webhook</string>
-    <key>token</key>
-    <string>your-secret-here</string>
-  </dict>
-  <key>finished</key>
-  <dict>
-    <key>url</key>
-    <string>https://setupmanagerhud.<your-subdomain>.workers.dev/webhook</string>
-    <key>token</key>
-    <string>your-secret-here</string>
-  </dict>
-</dict>
-```
-
-Setup Manager will send this as `Authorization: Bearer <token>` in the webhook request.
-
-**3.** That's it — the Worker validates this header on `/webhook` requests when `WEBHOOK_SECRET` is set. If it's not set, the webhook accepts all valid payloads (the default behavior for testing).
-
-> **Note:** Setup Manager also supports Basic Auth (`username` + `password` keys instead of `token`), but this Worker only validates Bearer tokens. Use the `token` key for compatibility.
-
-### Optional: Rate Limiting the Webhook Endpoint
-
-The `/webhook` endpoint is open to the internet so devices can POST enrollment events. To prevent abuse (flooding with fake events, exhausting KV storage), you can add a Cloudflare WAF rate limiting rule. This is configured entirely in the Cloudflare dashboard — no code changes required.
-
-#### Setup
-
-1. In the [Cloudflare dashboard](https://dash.cloudflare.com), select your account and domain (or Workers route)
-2. Go to **Security → WAF → Rate limiting rules**
-3. Click **Create rule** and configure:
-   - **Rule name:** `Rate limit webhook`
-   - **If incoming requests match:** Field `URI Path` — Operator `equals` — Value `/webhook`
-   - **Rate:** `30 requests` per `1 minute` (adjust based on your fleet size)
-   - **With the same:** `IP Address`
-   - **Then:** `Block` for `1 minute`
-4. Deploy the rule
-
-#### Choosing the Right Rate
-
-The rate depends on how many devices enroll simultaneously from the same IP. Each device sends exactly two webhook requests per enrollment (one `started`, one `finished`), so:
-
-| Fleet scenario | Concurrent enrollments from one IP | Suggested rate |
-|---|---|---|
-| Small office (1–10 devices) | 1–10 | 30 req/min |
-| Medium site (10–50 devices) | 10–50 | 120 req/min |
-| Large deployment (50+ from one NAT IP) | 50+ | 300 req/min |
-
-If your devices enroll behind a shared NAT or VPN gateway, choose a higher limit to avoid blocking legitimate traffic. You can always start with a permissive limit and tighten it after observing real traffic patterns in **Security → Analytics**.
-
-### Access Configuration Summary
-
-| Route | Authentication | Who |
-|-------|---------------|-----|
-| `/` (dashboard) | ✅ Cloudflare Access | Only authorized users |
-| `/ws` (WebSocket) | ✅ Cloudflare Access | Only authorized users |
-| `/api/events` | ✅ Cloudflare Access | Only authorized users |
-| `/api/stats` | ✅ Cloudflare Access | Only authorized users |
-| `/api/health` | ✅ Cloudflare Access | Only authorized users |
-| `/webhook` | ❌ Bypassed | Any device (Setup Manager) |
+> [!TIP]
+> **Advanced configuration:** See the [Configuration](https://github.com/motionbug/setupmanagerhud/wiki/Configuration) wiki page for environment variables, wrangler.toml reference, and health check endpoints.
 
 ## Local Development
 
