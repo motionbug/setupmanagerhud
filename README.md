@@ -175,9 +175,9 @@ In your Setup Manager configuration, set the webhook URL to:
 ```
 <key>webhooks</key>
 <dict>
-  <key>finished</key>
-  <string>https://setupmanagerhud.<your-subdomain>.workers.dev/webhook</string>
   <key>started</key>
+  <string>https://setupmanagerhud.<your-subdomain>.workers.dev/webhook</string>
+  <key>finished</key>
   <string>https://setupmanagerhud.<your-subdomain>.workers.dev/webhook</string>
 </dict>
 ```
@@ -286,6 +286,7 @@ After testing, you'll likely want to remove the dummy events. Cloudflare KV entr
 │                                                │
 │  GET /api/events ──→ Read from KV              │
 │  GET /api/stats  ──→ Aggregate from KV         │
+│  GET /api/health ──→ Check KV + DO status      │
 │                                                │
 │  GET /* ──→ Serve React dashboard (static)     │
 └─────────────────────────────────────────────────┘
