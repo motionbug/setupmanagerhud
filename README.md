@@ -4,7 +4,9 @@ A real-time webhook dashboard for [Setup Manager](https://github.com/nicknameisl
 
 Built with React, shadcn/ui, and Cloudflare Workers. Deploys in minutes. Secured with Cloudflare Access.
 
-![Setup Manager HUD Dashboard](./docs/dashboard.png)
+| Dark Mode | Light Mode |
+|-----------|------------|
+| ![Setup Manager HUD - Dark Mode](./docs/setupmanagerhud-dark.png) | ![Setup Manager HUD - Light Mode](./docs/setupmanagerhud-light.png) |
 
 ## What It Does
 
