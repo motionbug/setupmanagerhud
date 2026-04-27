@@ -22,16 +22,13 @@ Setup Manager sends webhook events during macOS device provisioning. This dashbo
 
 ## Quick Start
 
-**You do not have to fork this repo! You can deploy it directly to your Cloudflare account.**
----
+**You do not have to fork this repo!** You can deploy it directly to your Cloudflare account.
+
 ### Option 1: Deploy Button (Fastest)
 
 [![Deploy to Cloudflare Workers](https://deploy.workers.cloudflare.com/button)](https://deploy.workers.cloudflare.com/?url=https://github.com/motionbug/setupmanagerhud)
 
-
-⬆️ Click the deploy button above. ⬆️ 
-
-**It will:**
+Click the deploy button above. It will:
 1. Fork this repo to your GitHub account
 2. Set up a GitHub Actions workflow
 3. Deploy to your Cloudflare account
@@ -77,6 +74,8 @@ Your dashboard is now live at `https://setupmanagerhud.<your-subdomain>.workers.
 **Next step:** [Secure the dashboard](#security-setup) so only you can access it.
 
 ### Option 3: GitHub Actions
+
+> **Note:** If you used the Deploy Button (Option 1), this is already set up for you. This section is for manual forks or if you need to reconfigure the workflow.
 
 This repo includes a GitHub Actions workflow that builds and deploys to Cloudflare Workers. It runs manually from the Actions tab — useful if you prefer deploying from GitHub instead of the command line.
 
@@ -183,9 +182,7 @@ In your Setup Manager configuration, set the webhook URL to:
 </dict>
 ```
 
-Remember when either the started or finished key is missing, no webhook will be sent for that event.
-
-
+If either the `started` or `finished` key is missing, no webhook will be sent for that event.
 
 Setup Manager will POST enrollment events to this endpoint. They'll appear on the dashboard in real-time.
 
@@ -228,7 +225,7 @@ npm run dev:worker
 
 For local Worker development, create a `.dev.vars` file (see `.dev.vars.example`).
 
-> **Note:** Cloudflare Access is not active during local development. The dashboard is unprotected when running locally - this is expected and convenient for development.
+> **Note:** Cloudflare Access is not active during local development. The dashboard is unprotected when running locally — this is expected and convenient for development.
 
 ## Testing the Dashboard
 
@@ -314,6 +311,15 @@ After testing, you'll likely want to remove the dummy events. Cloudflare KV entr
 | Icons | [HugeIcons](https://hugeicons.com/) | MIT |
 | Font | [Figtree](https://fonts.google.com/specimen/Figtree) | OFL |
 | Build | [Vite](https://vite.dev/) | MIT |
+
+## Troubleshooting
+
+| Problem | Likely Cause | Solution |
+|---------|--------------|----------|
+| Worker returns 500 error | KV namespace not bound | See [KV Namespace](#kv-namespace-required) setup |
+| Dashboard shows no events | WebSocket not connecting | Check browser console for errors |
+| Webhook returns 401 | Token mismatch | Verify `WEBHOOK_SECRET` matches your Setup Manager config |
+| Can't access dashboard | Cloudflare Access misconfigured | Check `CF_ACCESS_AUD` and `CF_ACCESS_TEAM_DOMAIN` |
 
 ## Contributing
 
