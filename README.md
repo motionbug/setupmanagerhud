@@ -322,6 +322,36 @@ After testing, you'll likely want to remove the dummy events. Cloudflare KV entr
 | Webhook returns 401 | Token mismatch | Verify `WEBHOOK_SECRET` matches your Setup Manager config |
 | Can't access dashboard | Cloudflare Access misconfigured | Check `CF_ACCESS_AUD` and `CF_ACCESS_TEAM_DOMAIN` |
 
+### KV Namespace Not Working
+
+If webhooks return 200 OK but events don't appear on the dashboard:
+
+1. **Verify the KV binding name is exactly `WEBHOOKS`** — the code references `env.WEBHOOKS`, so the binding variable name must match
+2. **Check the binding is active** — in Cloudflare Dashboard, go to Workers & Pages → your Worker → Settings → Bindings and confirm WEBHOOKS is listed
+3. **Redeploys can remove dashboard-set bindings** — if you bound KV via the dashboard but later redeployed from GitHub, the `wrangler.toml` placeholder ID may have overwritten your binding. Either:
+   - Re-bind via the dashboard after each deploy, or
+   - Update `wrangler.toml` with your actual KV namespace ID for persistent bindings
+
+### Webhook Authentication Format
+
+Setup Manager sends the webhook token in the `Authorization` header **without** the `Bearer` prefix:
+
+```
+Authorization: your-token-here
+```
+
+This differs from the standard `Authorization: Bearer <token>` format. The HUD accepts both formats, so you can test with curl using either:
+
+```bash
+# Standard Bearer format (works)
+curl -H "Authorization: Bearer your-secret" ...
+
+# Raw token format (how Setup Manager sends it)
+curl -H "Authorization: your-secret" ...
+```
+
+If webhooks return 401, verify the token in your Setup Manager plist matches the `WEBHOOK_SECRET` set on your Worker exactly (case-sensitive, no extra whitespace).
+
 ## Contributing
 
 Contributions welcome! Please open an issue first to discuss what you'd like to change.

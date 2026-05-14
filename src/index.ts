@@ -252,9 +252,10 @@ async function handleWebhook(request: Request, env: Env): Promise<Response> {
   const webhookSecret = env.WEBHOOK_SECRET;
   if (webhookSecret) {
     const authHeader = request.headers.get("Authorization");
+    // Support both "Bearer <token>" (standard) and raw token (Setup Manager)
     const token = authHeader?.startsWith("Bearer ")
       ? authHeader.slice(7)
-      : null;
+      : authHeader;
 
     if (!token || !(await timingSafeEqual(token, webhookSecret))) {
       return json({ error: "Unauthorized" }, 401, request);

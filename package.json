@@ -10,6 +10,7 @@
     "build": "vite build",
     "preview": "vite preview",
     "deploy": "npm run build && npx wrangler deploy",
+    "deploy:prod": "npm run build && npx wrangler deploy -c wrangler.production.toml",
     "dev:worker": "npx wrangler dev",
     "typecheck": "tsc --noEmit",
     "setup": "npx wrangler kv namespace create WEBHOOKS && echo '⚠️  Copy the namespace ID into wrangler.toml'",
