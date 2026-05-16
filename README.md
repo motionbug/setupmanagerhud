@@ -115,7 +115,7 @@ Setup Manager HUD supports authentication to protect the dashboard and webhook t
 
 ### Cloudflare Access JWT Validation
 
-Cloudflare Access protects the dashboard at the edge. You can also have the Worker verify Cloudflare Access JWTs before serving dashboard, API, and WebSocket requests. This is a production hardening step and is separate from `WEBHOOK_TOKEN`; `/webhook` must bypass Access so Setup Manager devices can post events.
+Cloudflare Access protects the dashboard at the edge. You can also have the Worker verify Cloudflare Access JWTs before serving dashboard, API, and WebSocket requests. This is a production hardening step and is separate from `WEBHOOK_TOKEN`; `/webhook` must bypass Access so Setup Manager devices can post events. When JWT validation is enabled, rejected dashboard/API requests return `403` from the Worker and still include the standard security headers.
 
 To enable Worker-side JWT validation, create your Access application, find its audience tag and team domain, then add these values to `wrangler.toml`:
 

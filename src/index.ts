@@ -95,6 +95,19 @@ function json(data: unknown, status = 200, request?: Request): Response {
   });
 }
 
+function withSecurityHeaders(response: Response): Response {
+  const headers = new Headers(response.headers);
+  for (const [key, value] of Object.entries(SECURITY_HEADERS)) {
+    headers.set(key, value);
+  }
+
+  return new Response(response.body, {
+    status: response.status,
+    statusText: response.statusText,
+    headers,
+  });
+}
+
 /**
  * Constant-time string comparison using HMAC digests.
  * Both inputs are hashed to fixed-length 256-bit digests before comparison,
@@ -460,7 +473,9 @@ export default {
     const url = new URL(request.url);
 
     if (request.method === "OPTIONS") {
-      return new Response(null, { headers: getCorsHeaders(request) });
+      return withSecurityHeaders(
+        new Response(null, { headers: getCorsHeaders(request) }),
+      );
     }
 
     // Webhook endpoint is always open for devices — no Access check
@@ -470,7 +485,7 @@ export default {
 
     // All other routes require Cloudflare Access JWT (if configured)
     const accessDenied = await validateAccessJwt(request, env);
-    if (accessDenied) return accessDenied;
+    if (accessDenied) return withSecurityHeaders(accessDenied);
 
     if (url.pathname === "/api/events" && request.method === "GET") {
       return handleEvents(request, env);
@@ -487,18 +502,10 @@ export default {
 
     if (env.ASSETS) {
       const assetResponse = await env.ASSETS.fetch(request);
-      const headers = new Headers(assetResponse.headers);
-      for (const [key, value] of Object.entries(SECURITY_HEADERS)) {
-        headers.set(key, value);
-      }
-      return new Response(assetResponse.body, {
-        status: assetResponse.status,
-        statusText: assetResponse.statusText,
-        headers,
-      });
+      return withSecurityHeaders(assetResponse);
     }
 
-    return new Response("Not Found", { status: 404 });
+    return withSecurityHeaders(new Response("Not Found", { status: 404 }));
   },
 };
 
