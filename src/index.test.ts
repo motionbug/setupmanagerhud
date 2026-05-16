@@ -128,13 +128,13 @@ describe("validateAccessJwt", () => {
   const mockEnvWithAccess: Env = {
     CF_ACCESS_AUD: "test-audience-id",
     CF_ACCESS_TEAM_DOMAIN: "test-team.cloudflareaccess.com",
-    WEBHOOKS: {} as KVNamespace,
+    DB: {} as D1Database,
     DASHBOARD_ROOM: {} as DurableObjectNamespace,
   };
 
   // Mock environment without Access configured
   const mockEnvWithoutAccess: Env = {
-    WEBHOOKS: {} as KVNamespace,
+    DB: {} as D1Database,
     DASHBOARD_ROOM: {} as DurableObjectNamespace,
   };
 

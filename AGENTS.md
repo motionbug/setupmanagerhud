@@ -2,7 +2,7 @@
 
 ## Project Structure & Module Organization
 
-Setup Manager HUD is a TypeScript React/Vite dashboard deployed as a Cloudflare Worker. Worker entry and routing live in `src/index.ts`; WebSocket coordination is in `src/DashboardRoom.ts`; KV persistence helpers are in `src/kv.ts`; webhook payload types and validation are in `src/types.ts`. The React app starts at `src/main.tsx`, with dashboard features in `src/components/dashboard/`, reusable UI primitives in `src/components/ui/`, hooks in `src/hooks/`, utilities in `src/lib/`, global styles in `src/styles/globals.css`, and static assets in `public/`.
+Setup Manager HUD is a TypeScript React/Vite dashboard deployed as a Cloudflare Worker. Worker entry and routing live in `src/index.ts`; WebSocket coordination is in `src/DashboardRoom.ts`; D1 event persistence helpers are in `src/events.ts`; webhook payload types and validation are in `src/types.ts`. The React app starts at `src/main.tsx`, with dashboard features in `src/components/dashboard/`, reusable UI primitives in `src/components/ui/`, hooks in `src/hooks/`, utilities in `src/lib/`, global styles in `src/styles/globals.css`, and static assets in `public/`.
 
 Tests are colocated as `src/*.test.ts`, with broader request/security flows under `test/`. Deployment configuration lives in `wrangler.toml`; customer-facing docs live in `README.md`, and extended setup docs live in the GitHub wiki repo.
 

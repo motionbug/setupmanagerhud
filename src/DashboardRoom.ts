@@ -1,8 +1,8 @@
 import type { StoredEvent } from "./types";
-import { fetchEvents } from "./kv";
+import { fetchEvents } from "./events";
 
 interface Env {
-  WEBHOOKS: KVNamespace;
+  DB: D1Database;
 }
 
 export class DashboardRoom implements DurableObject {

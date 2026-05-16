@@ -4,12 +4,12 @@ import {
   type SetupManagerWebhook,
   type StoredEvent,
 } from "./types";
-import { fetchEvents } from "./kv";
+import { fetchEvents, fetchEventStats, insertEvent } from "./events";
 
 export { DashboardRoom };
 
 interface Env {
-  WEBHOOKS: KVNamespace;
+  DB: D1Database;
   DASHBOARD_ROOM: DurableObjectNamespace;
   WEBHOOK_TOKEN?: string;
   WEBHOOK_SECRET?: string;
@@ -336,9 +336,7 @@ export async function handleWebhook(request: Request, env: Env): Promise<Respons
 
   const storedEvent: StoredEvent = { payload: webhookPayload, timestamp, eventId };
 
-  await env.WEBHOOKS.put(eventId, JSON.stringify(storedEvent), {
-    expirationTtl: 60 * 60 * 24 * 90,
-  });
+  await insertEvent(env, storedEvent);
 
   const roomId = env.DASHBOARD_ROOM.idFromName("main");
   const room = env.DASHBOARD_ROOM.get(roomId);
@@ -362,46 +360,7 @@ async function handleEvents(request: Request, env: Env): Promise<Response> {
 
 // GET /api/stats
 async function handleStats(request: Request, env: Env): Promise<Response> {
-  const validEvents = await fetchEvents(env, 1000);
-  const startedEvents = validEvents.filter(
-    (e) => e.payload.event === "com.jamf.setupmanager.started"
-  );
-  const finishedEvents = validEvents.filter(
-    (e) => e.payload.event === "com.jamf.setupmanager.finished"
-  );
-
-  const stats = {
-    total: validEvents.length,
-    started: startedEvents.length,
-    finished: finishedEvents.length,
-    avgDuration: 0,
-    successRate: 0,
-    devices: new Set(validEvents.map((e) => e.payload.serialNumber)).size,
-    lastEventTime:
-      validEvents.length > 0
-        ? Math.max(...validEvents.map((e) => e.timestamp))
-        : null,
-  };
-
-  if (finishedEvents.length > 0) {
-    const durations = finishedEvents.map((e) =>
-      "duration" in e.payload ? e.payload.duration : 0
-    );
-    stats.avgDuration = Math.round(
-      durations.reduce((a, b) => a + b, 0) / durations.length
-    );
-
-    const successfulEnrollments = finishedEvents.filter((e) => {
-      if ("enrollmentActions" in e.payload && e.payload.enrollmentActions) {
-        return e.payload.enrollmentActions.every((a) => a.status === "finished");
-      }
-      return true;
-    });
-    stats.successRate = Math.round(
-      (successfulEnrollments.length / finishedEvents.length) * 100
-    );
-  }
-
+  const stats = await fetchEventStats(env);
   return json(stats, 200, request);
 }
 
@@ -410,26 +369,26 @@ async function handleHealth(request: Request, env: Env): Promise<Response> {
   const health: {
     status: string;
     timestamp: number;
-    kv: string;
     durable_objects: string;
+    d1: string;
     connections?: number;
   } = {
     status: "healthy",
     timestamp: Date.now(),
-    kv: "unknown",
+    d1: "unknown",
     durable_objects: "unknown",
   };
 
   try {
-    if (env?.WEBHOOKS) {
-      await env.WEBHOOKS.list({ limit: 1 });
-      health.kv = "connected";
+    if (env?.DB) {
+      await env.DB.prepare("SELECT 1").first();
+      health.d1 = "connected";
     } else {
-      health.kv = "not configured";
+      health.d1 = "not configured";
       health.status = "degraded";
     }
   } catch {
-    health.kv = "error";
+    health.d1 = "error";
     health.status = "degraded";
   }
 

@@ -13,7 +13,7 @@
     "deploy:prod": "npm run build && npx wrangler deploy -c wrangler.production.toml",
     "dev:worker": "npx wrangler dev",
     "typecheck": "tsc --noEmit",
-    "setup": "npx wrangler kv namespace create WEBHOOKS && echo '⚠️  Copy the namespace ID into wrangler.toml'",
+    "setup": "npx wrangler d1 create setupmanagerhud-events && echo 'Copy the database_id into wrangler.toml, then run: npx wrangler d1 migrations apply setupmanagerhud-events'",
     "test": "npm run build && vitest run",
     "test:watch": "npm run build && vitest"
   },

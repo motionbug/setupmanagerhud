@@ -14,10 +14,20 @@ const VALID_PAYLOAD = {
   setupManagerVersion: "2.0.0",
 };
 
-function createKvNamespace(
-  put: KVNamespace["put"] = async () => undefined,
-): KVNamespace {
-  return { put } as unknown as KVNamespace;
+type D1RunMock = (...values: unknown[]) => Promise<D1Result>;
+
+function createD1Database(
+  run: D1RunMock = async () => ({ success: true } as D1Result),
+): D1Database {
+  return {
+    prepare: () =>
+      ({
+        bind: (...values: unknown[]) =>
+          ({
+            run: () => run(...values),
+          }) as unknown as D1PreparedStatement,
+      }) as unknown as D1PreparedStatement,
+  } as unknown as D1Database;
 }
 
 function createDashboardRoomNamespace(): DurableObjectNamespace {
@@ -33,7 +43,7 @@ function createDashboardRoomNamespace(): DurableObjectNamespace {
 
 function createEnv(overrides: Partial<Env> = {}): Env {
   return {
-    WEBHOOKS: createKvNamespace(),
+    DB: createD1Database(),
     DASHBOARD_ROOM: createDashboardRoomNamespace(),
     ...overrides,
   };
@@ -90,9 +100,10 @@ test("accepts a valid payload with the correct Authorization token", async () =>
     createRequest(),
     createEnv({
       WEBHOOK_TOKEN: "expected-token",
-      WEBHOOKS: createKvNamespace(
-        async (key: string) => {
-          storedKey = key;
+      DB: createD1Database(
+        async (eventId: unknown) => {
+          storedKey = String(eventId);
+          return { success: true } as D1Result;
         },
       ),
     }),
