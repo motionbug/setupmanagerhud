@@ -4,7 +4,13 @@ import {
   type SetupManagerWebhook,
   type StoredEvent,
 } from "./types";
-import { fetchEvents, fetchEventStats, insertEvent } from "./events";
+import {
+  deleteEventsOlderThan,
+  fetchEvents,
+  fetchEventStats,
+  insertEvent,
+  type FetchEventsOptions,
+} from "./events";
 
 export { DashboardRoom };
 
@@ -16,6 +22,7 @@ interface Env {
   ASSETS?: Fetcher;
   CF_ACCESS_AUD?: string;
   CF_ACCESS_TEAM_DOMAIN?: string;
+  RETENTION_DAYS?: string;
 }
 
 const SECURITY_HEADERS: Record<string, string> = {
@@ -93,6 +100,17 @@ function json(data: unknown, status = 200, request?: Request): Response {
       "Content-Type": "application/json",
     },
   });
+}
+
+function databaseUnavailable(request?: Request): Response {
+  return json(
+    {
+      error: "D1 database is not configured",
+      details: "Create a D1 database, bind it as DB, and apply migrations.",
+    },
+    503,
+    request,
+  );
 }
 
 function withSecurityHeaders(response: Response): Response {
@@ -336,6 +354,11 @@ export async function handleWebhook(request: Request, env: Env): Promise<Respons
 
   const storedEvent: StoredEvent = { payload: webhookPayload, timestamp, eventId };
 
+  if (!env.DB) {
+    logWebhookRejection(request, "missing_d1_binding");
+    return databaseUnavailable(request);
+  }
+
   await insertEvent(env, storedEvent);
 
   const roomId = env.DASHBOARD_ROOM.idFromName("main");
@@ -350,16 +373,41 @@ export async function handleWebhook(request: Request, env: Env): Promise<Respons
 
 // GET /api/events
 async function handleEvents(request: Request, env: Env): Promise<Response> {
-  const url = new URL(request.url);
-  const limitParam = url.searchParams.get("limit");
-  const limit = Math.min(Math.max(parseInt(limitParam || "100", 10) || 100, 1), 1000);
+  if (!env.DB) return databaseUnavailable(request);
 
-  const validEvents = await fetchEvents(env, limit);
+  const url = new URL(request.url);
+  const eventTypeParam = url.searchParams.get("eventType");
+  const timeRangeParam = url.searchParams.get("timeRange");
+  const options: FetchEventsOptions = {
+    limit: parseInt(url.searchParams.get("limit") || "100", 10),
+    offset: parseInt(url.searchParams.get("offset") || "0", 10),
+    eventType:
+      eventTypeParam === "started" ||
+      eventTypeParam === "finished" ||
+      eventTypeParam === "failed"
+        ? eventTypeParam
+        : undefined,
+    macOSVersion: url.searchParams.get("macOSVersion") || undefined,
+    model: url.searchParams.get("model") || undefined,
+    serial: url.searchParams.get("serial") || undefined,
+    search: url.searchParams.get("search") || undefined,
+    timeRange:
+      timeRangeParam === "hour" ||
+      timeRangeParam === "day" ||
+      timeRangeParam === "week"
+        ? timeRangeParam
+        : undefined,
+    failedOnly: url.searchParams.get("failedOnly") === "true",
+  };
+
+  const validEvents = await fetchEvents(env, options);
   return json(validEvents, 200, request);
 }
 
 // GET /api/stats
 async function handleStats(request: Request, env: Env): Promise<Response> {
+  if (!env.DB) return databaseUnavailable(request);
+
   const stats = await fetchEventStats(env);
   return json(stats, 200, request);
 }
@@ -417,6 +465,12 @@ async function handleHealth(request: Request, env: Env): Promise<Response> {
   return json(health, health.status === "healthy" ? 200 : 503, request);
 }
 
+function getRetentionDays(env: Env): number {
+  const parsed = parseInt(env.RETENTION_DAYS || "90", 10);
+  if (!Number.isFinite(parsed)) return 90;
+  return Math.min(Math.max(parsed, 1), 3650);
+}
+
 // GET /ws — WebSocket upgrade
 function handleWebSocket(request: Request, env: Env): Response {
   if (request.headers.get("Upgrade") !== "websocket") {
@@ -465,6 +519,23 @@ export default {
     }
 
     return withSecurityHeaders(new Response("Not Found", { status: 404 }));
+  },
+
+  async scheduled(_controller: ScheduledController, env: Env): Promise<void> {
+    if (!env.DB) {
+      console.warn("Skipping retention cleanup: D1 database is not configured");
+      return;
+    }
+
+    const retentionDays = getRetentionDays(env);
+    const cutoff = Date.now() - retentionDays * 24 * 60 * 60 * 1000;
+    const deleted = await deleteEventsOlderThan(env, cutoff);
+
+    console.info("D1 retention cleanup completed", {
+      retentionDays,
+      cutoff,
+      deleted,
+    });
   },
 };
 
