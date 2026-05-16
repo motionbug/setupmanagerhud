@@ -36,7 +36,8 @@ Click the deploy button above. It will:
 > **Tip:** During setup, you'll be asked for a project name. This becomes your Worker URL (`<project-name>.<your-subdomain>.workers.dev`). You can name it anything you like — `setupmanagerhud`, `enrollment-dashboard`, or even something obscure like `x7k9-internal`. A less obvious name makes the URL harder to guess, which is fine as long as it's a valid URL (lowercase letters, numbers, and hyphens).
 
 After clicking Deploy, you'll need to:
-- Create a D1 database and bind it to your Worker (see [D1 Database](#d1-database-required)) — no CLI needed, this is done entirely in the Cloudflare dashboard
+- Create a D1 database and bind it to your Worker as `DB` (see [D1 Database](#d1-database-required))
+- Apply the D1 migration from a local clone with Wrangler
 - Set a `WEBHOOK_TOKEN` secret on your Worker (see [Webhook Token](#webhook-token-required))
 - Optionally [secure the dashboard](#security-setup) with Cloudflare Access
 
@@ -67,7 +68,7 @@ npx wrangler d1 create setupmanagerhud-events
 #    database_id = "your-database-id-here"
 
 # 6. Apply the D1 migrations
-npx wrangler d1 migrations apply setupmanagerhud-events
+npx wrangler d1 migrations apply setupmanagerhud-events --remote
 
 # 7. Set the webhook token secret
 npx wrangler secret put WEBHOOK_TOKEN
@@ -153,15 +154,15 @@ Setup Manager sends this value in the `Authorization` header without the `Bearer
 
 ### D1 Database (Required)
 
-Setup Manager HUD stores webhook events in [Cloudflare D1](https://developers.cloudflare.com/d1/). You need to create a database, apply the included migrations, and connect it to your Worker. Without this, the Worker will return a 500 error when receiving webhooks.
+Setup Manager HUD stores webhook events in [Cloudflare D1](https://developers.cloudflare.com/d1/). You need to create a database, apply the included migrations, and connect it to your Worker. Without this, webhook and API responses return a 503 configuration error and the dashboard shows a storage warning.
 
-For Deploy Button users, the easiest path is the Cloudflare dashboard: create a D1 database, then bind it to your Worker with the variable name `DB`.
+For Deploy Button users, create a D1 database in the Cloudflare dashboard, bind it to your Worker with the variable name `DB`, then apply the migration from a local clone. A dashboard-created binding can be replaced by later GitHub redeploys if `wrangler.toml` does not include the same D1 binding, so permanent installs should also commit the D1 binding to their fork.
 
 For CLI or GitHub Actions deployments, create a database, add its ID to `wrangler.toml`, and apply migrations:
 
 ```bash
 npx wrangler d1 create setupmanagerhud-events
-npx wrangler d1 migrations apply setupmanagerhud-events
+npx wrangler d1 migrations apply setupmanagerhud-events --remote
 ```
 
 ```toml
@@ -172,6 +173,8 @@ database_id = "paste-your-database-id-here"
 ```
 
 See the wiki’s [Configuration guide](https://github.com/motionbug/setupmanagerhud/wiki/Configuration) for dashboard steps, CLI steps, and how redeploys affect bindings.
+
+By default, a daily scheduled cleanup keeps 90 days of D1 event history. You can change this by setting `RETENTION_DAYS` in `wrangler.toml`.
 
 ### Connecting Setup Manager
 
@@ -256,6 +259,36 @@ Once the script finishes, open the dashboard in your browser. You should see eve
 
 Dummy events use serial numbers starting with `DUMMY`. You can remove them from D1 by running a filtered SQL delete against your database.
 
+```bash
+npx wrangler d1 execute setupmanagerhud-events \
+  --remote \
+  --command "DELETE FROM events WHERE serial_number LIKE 'DUMMY%'"
+```
+
+### API Event Filters
+
+`GET /api/events` returns an array of stored events. The endpoint supports server-side filtering so large deployments do not need to pull every recent event into the browser before narrowing results.
+
+Supported query parameters:
+
+| Parameter | Values |
+|-----------|--------|
+| `limit` | `1` to `1000` |
+| `offset` | `0` or higher |
+| `eventType` | `started`, `finished`, `failed` |
+| `failedOnly` | `true` |
+| `macOSVersion` | partial version text |
+| `model` | partial model name |
+| `serial` | partial serial number |
+| `search` | searches serial, model, computer name, macOS version, and user ID |
+| `timeRange` | `hour`, `day`, `week` |
+
+Example:
+
+```bash
+curl "https://setupmanagerhud.<your-subdomain>.workers.dev/api/events?eventType=failed&timeRange=week&limit=50"
+```
+
 ## Architecture
 
 ```
@@ -279,6 +312,7 @@ Dummy events use serial numbers starting with `DUMMY`. You can remove them from 
 │  GET /api/events ──→ Read from D1              │
 │  GET /api/stats  ──→ Aggregate from D1         │
 │  GET /api/health ──→ Check D1 + DO status      │
+│  Scheduled cron ──→ Delete old D1 events       │
 │                                                │
 │  GET /* ──→ Serve React dashboard (static)     │
 └─────────────────────────────────────────────────┘
@@ -287,14 +321,16 @@ Dummy events use serial numbers starting with `DUMMY`. You can remove them from 
 - **Cloudflare Access** - Optional authentication gate at the edge. Protects the dashboard when enabled; `/webhook` stays reachable and is protected by `WEBHOOK_TOKEN`.
 - **Cloudflare Workers** - Serverless edge runtime, handles all HTTP and WebSocket traffic
 - **Durable Objects** - WebSocket hub with hibernation for real-time event broadcasting
-- **Cloudflare D1** - SQL event storage for webhook history, stats, and future server-side filtering
+- **Cloudflare D1** - SQL event storage for webhook history, stats, and server-side filtering
+- **Scheduled Worker** - Daily retention cleanup for old D1 events, defaulting to 90 days
 - **React + shadcn/ui** - Dashboard UI, built with Vite, served as static assets
 
 ## Troubleshooting
 
 | Problem | Likely Cause | Solution |
 |---------|--------------|----------|
-| Worker returns 500 error | D1 database not bound or migrations not applied | See [D1 setup](https://github.com/motionbug/setupmanagerhud/wiki/Configuration) |
+| Worker returns 503 configuration error | D1 database not bound or migrations not applied | See [D1 setup](https://github.com/motionbug/setupmanagerhud/wiki/Configuration) |
+| Dashboard shows storage warning | D1 or Durable Object health check is degraded | Check `/api/health`, D1 binding `DB`, and migrations |
 | Dashboard shows no events | WebSocket not connecting | Check browser console for errors |
 | Webhook returns 401 | Token mismatch | Verify `WEBHOOK_TOKEN` matches your Setup Manager config |
 | Can't access dashboard after enabling Access | Cloudflare Access misconfigured | Check `CF_ACCESS_AUD` and `CF_ACCESS_TEAM_DOMAIN` |

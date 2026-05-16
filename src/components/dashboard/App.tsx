@@ -12,7 +12,7 @@ import type { FilterState } from "@/types";
 import { isFinishedWebhook } from "@/types";
 
 export function App() {
-  const { connected, events, stats } = useWebSocket();
+  const { connected, events, stats, health } = useWebSocket();
   const [filters, setFilters] = React.useState<FilterState>({
     eventType: "all",
     macOSVersion: "",
@@ -85,6 +85,7 @@ export function App() {
       <div className="min-h-screen bg-canvas">
         <Header connected={false} />
         <main className="mx-auto max-w-[1600px] px-6 py-8">
+          {health.status === "degraded" && <HealthWarning health={health} />}
           <DashboardSkeleton />
         </main>
       </div>
@@ -96,6 +97,8 @@ export function App() {
       <Header connected={connected} />
       <main className="mx-auto max-w-[1600px] px-6 py-8">
         <div className="space-y-8">
+          {health.status === "degraded" && <HealthWarning health={health} />}
+
           {/* Pipeline Stats */}
           <KpiCards
             started={stats.started}
@@ -140,6 +143,27 @@ export function App() {
         </div>
       </main>
       <PoweredByJamf />
+    </div>
+  );
+}
+
+function HealthWarning({
+  health,
+}: {
+  health: {
+    status: "unknown" | "healthy" | "degraded";
+    d1?: string;
+    durableObjects?: string;
+  };
+}) {
+  return (
+    <div className="mb-6 rounded-xl border border-status-warning/40 bg-status-warning/10 px-5 py-4 text-base text-ink">
+      <div className="font-semibold text-status-warning">Storage configuration needs attention</div>
+      <div className="mt-1 text-ink-muted">
+        D1 is {health.d1 || "unknown"} and Durable Objects are{" "}
+        {health.durableObjects || "unknown"}. Check the Worker bindings and D1
+        migrations before relying on live history.
+      </div>
     </div>
   );
 }

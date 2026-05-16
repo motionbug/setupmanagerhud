@@ -16,6 +16,11 @@ class_name = "DashboardRoom"
 tag = "v1"
 new_sqlite_classes = ["DashboardRoom"]
 
+# Scheduled cleanup for D1 event retention.
+# RETENTION_DAYS defaults to 90 when the variable is not set.
+[triggers]
+crons = ["0 3 * * *"]
+
 # D1 for event persistence
 # REQUIRED for production: create a D1 database and bind it to DB.
 # For CLI/GitHub deploys, uncomment this section and paste your database ID.
@@ -37,3 +42,4 @@ new_sqlite_classes = ["DashboardRoom"]
 # [vars]
 # CF_ACCESS_AUD = "paste-your-audience-tag-here"
 # CF_ACCESS_TEAM_DOMAIN = "your-team.cloudflareaccess.com"
+# RETENTION_DAYS = "90"

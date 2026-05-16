@@ -29,7 +29,7 @@ Dashboard APIs
 
 ## Storage Responsibilities
 
-- **D1**: canonical event history, normalized query columns, full raw webhook payload JSON, stats queries, future server-side filtering and pagination.
+- **D1**: canonical event history, normalized query columns, full raw webhook payload JSON, stats queries, server-side filtering, pagination, and retention cleanup.
 - **Durable Object**: WebSocket connection coordination, live broadcast fanout, connection counts, recent-history delivery on WebSocket connect.
 - **KV**: no longer required for event persistence. It may be reintroduced later only for cache/config data if needed.
 
@@ -73,12 +73,9 @@ Indexes should support the dashboard's common access paths:
 
 ## Future Enhancements
 
-- Server-side filters for `/api/events`: event type, macOS version, model, failed only, search, time range.
 - Cursor pagination for large histories.
-- Scheduled retention cleanup to replace KV's current 90-day TTL behavior.
-- Optional one-time migration script for existing KV-backed deployments.
 - Optional Queue or Durable Object ingestion buffer if real production bursts require batching.
 
 ## Rollout Notes
 
-This is a deployment-affecting change. Customers will need to create and bind a D1 database before deploying the new Worker. Existing KV data will not automatically appear in D1 unless a migration script is added and run.
+This is a deployment-affecting change. Customers will need to create and bind a D1 database before deploying the new Worker. This is a new project, so no KV-to-D1 data migration path is planned.

@@ -14,6 +14,21 @@ interface EventRow {
   payload_json: string;
 }
 
+type EventTypeFilter = "started" | "finished" | "failed";
+type TimeRangeFilter = "hour" | "day" | "week";
+
+export interface FetchEventsOptions {
+  limit?: number;
+  offset?: number;
+  eventType?: EventTypeFilter;
+  macOSVersion?: string;
+  model?: string;
+  serial?: string;
+  search?: string;
+  timeRange?: TimeRangeFilter;
+  failedOnly?: boolean;
+}
+
 export interface EventStats {
   total: number;
   started: number;
@@ -39,6 +54,37 @@ function getActionCounts(payload: SetupManagerFinishedWebhook | null): {
     failedActionCount: actions.filter((action) => action.status === "failed").length,
     totalActionCount: actions.length,
   };
+}
+
+function clampInteger(value: number | undefined, fallback: number, min: number, max: number): number {
+  if (value === undefined || !Number.isFinite(value)) return fallback;
+  return Math.min(Math.max(Math.trunc(value), min), max);
+}
+
+function escapeLike(value: string): string {
+  return value.replace(/[\\%_]/g, (char) => `\\${char}`);
+}
+
+function addLikeFilter(
+  clauses: string[],
+  bindings: unknown[],
+  column: string,
+  value: string | undefined,
+): void {
+  const trimmed = value?.trim();
+  if (!trimmed) return;
+  clauses.push(`LOWER(${column}) LIKE ? ESCAPE '\\'`);
+  bindings.push(`%${escapeLike(trimmed.toLowerCase())}%`);
+}
+
+function getTimeRangeCutoff(timeRange: TimeRangeFilter | undefined): number | null {
+  if (!timeRange) return null;
+  const ranges: Record<TimeRangeFilter, number> = {
+    hour: 60 * 60 * 1000,
+    day: 24 * 60 * 60 * 1000,
+    week: 7 * 24 * 60 * 60 * 1000,
+  };
+  return Date.now() - ranges[timeRange];
 }
 
 export async function insertEvent(
@@ -106,16 +152,61 @@ export async function insertEvent(
 
 export async function fetchEvents(
   env: EventsEnv,
-  limit = 200,
+  options: number | FetchEventsOptions = 200,
 ): Promise<StoredEvent[]> {
-  const safeLimit = Math.min(Math.max(Math.trunc(limit) || 200, 1), 1000);
+  const normalizedOptions =
+    typeof options === "number" ? { limit: options } : options;
+  const safeLimit = clampInteger(normalizedOptions.limit, 200, 1, 1000);
+  const safeOffset = clampInteger(normalizedOptions.offset, 0, 0, 100000);
+  const clauses: string[] = [];
+  const bindings: unknown[] = [];
+
+  if (normalizedOptions.eventType === "started") {
+    clauses.push("event_type = ?");
+    bindings.push("com.jamf.setupmanager.started");
+  }
+
+  if (normalizedOptions.eventType === "finished") {
+    clauses.push("event_type = ?");
+    bindings.push("com.jamf.setupmanager.finished");
+  }
+
+  if (normalizedOptions.eventType === "failed" || normalizedOptions.failedOnly) {
+    clauses.push("has_failed_actions = 1");
+  }
+
+  addLikeFilter(clauses, bindings, "macos_version", normalizedOptions.macOSVersion);
+  addLikeFilter(clauses, bindings, "model_name", normalizedOptions.model);
+  addLikeFilter(clauses, bindings, "serial_number", normalizedOptions.serial);
+
+  const cutoff = getTimeRangeCutoff(normalizedOptions.timeRange);
+  if (cutoff !== null) {
+    clauses.push("timestamp >= ?");
+    bindings.push(cutoff);
+  }
+
+  const search = normalizedOptions.search?.trim();
+  if (search) {
+    const likeValue = `%${escapeLike(search.toLowerCase())}%`;
+    clauses.push(
+      `(LOWER(serial_number) LIKE ? ESCAPE '\\' OR
+        LOWER(model_name) LIKE ? ESCAPE '\\' OR
+        LOWER(COALESCE(computer_name, '')) LIKE ? ESCAPE '\\' OR
+        LOWER(macos_version) LIKE ? ESCAPE '\\' OR
+        LOWER(COALESCE(user_id, '')) LIKE ? ESCAPE '\\')`,
+    );
+    bindings.push(likeValue, likeValue, likeValue, likeValue, likeValue);
+  }
+
+  const whereClause = clauses.length > 0 ? `WHERE ${clauses.join(" AND ")}` : "";
   const result = await env.DB.prepare(
     `SELECT event_id, timestamp, payload_json
      FROM events
+     ${whereClause}
      ORDER BY timestamp DESC
-     LIMIT ?`
+     LIMIT ? OFFSET ?`
   )
-    .bind(safeLimit)
+    .bind(...bindings, safeLimit, safeOffset)
     .all<EventRow>();
 
   return (result.results ?? [])
@@ -141,6 +232,19 @@ export async function fetchEvents(
       return null;
     })
     .filter((event): event is StoredEvent => event !== null);
+}
+
+export async function deleteEventsOlderThan(
+  env: EventsEnv,
+  cutoffTimestamp: number,
+): Promise<number> {
+  const result = await env.DB.prepare(
+    "DELETE FROM events WHERE timestamp < ?"
+  )
+    .bind(cutoffTimestamp)
+    .run();
+
+  return result.meta.changes ?? 0;
 }
 
 export async function fetchEventStats(env: EventsEnv): Promise<EventStats> {

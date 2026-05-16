@@ -1,5 +1,10 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { fetchEvents, fetchEventStats, insertEvent } from "./events";
+import {
+  deleteEventsOlderThan,
+  fetchEvents,
+  fetchEventStats,
+  insertEvent,
+} from "./events";
 import type { StoredEvent } from "./types";
 
 const validEvent = (id: string, timestamp: number): StoredEvent => ({
@@ -97,7 +102,7 @@ describe("events D1 storage", () => {
 
       const events = await fetchEvents(mockEnv, 50);
 
-      expect(bind).toHaveBeenCalledWith(50);
+      expect(bind).toHaveBeenCalledWith(50, 0);
       expect(events.map((event) => event.eventId)).toEqual([
         "test-event-2",
         "test-event-1",
@@ -126,6 +131,40 @@ describe("events D1 storage", () => {
       expect(events).toHaveLength(1);
       expect(events[0].eventId).toBe("test-event-1");
     });
+
+    it("adds server-side filters and pagination bindings", async () => {
+      all.mockResolvedValue({ results: [] });
+
+      await fetchEvents(mockEnv, {
+        limit: 25,
+        offset: 50,
+        eventType: "failed",
+        macOSVersion: "15.0",
+        model: "MacBook",
+        serial: "SN",
+        search: "user",
+        timeRange: "day",
+      });
+
+      expect(prepare).toHaveBeenCalledWith(expect.stringContaining("has_failed_actions = 1"));
+      expect(prepare).toHaveBeenCalledWith(expect.stringContaining("LOWER(macos_version) LIKE ?"));
+      expect(prepare).toHaveBeenCalledWith(expect.stringContaining("LOWER(model_name) LIKE ?"));
+      expect(prepare).toHaveBeenCalledWith(expect.stringContaining("LOWER(serial_number) LIKE ?"));
+      expect(prepare).toHaveBeenCalledWith(expect.stringContaining("timestamp >= ?"));
+      expect(bind).toHaveBeenCalledWith(
+        "%15.0%",
+        "%macbook%",
+        "%sn%",
+        expect.any(Number),
+        "%user%",
+        "%user%",
+        "%user%",
+        "%user%",
+        "%user%",
+        25,
+        50,
+      );
+    });
   });
 
   describe("fetchEventStats", () => {
@@ -152,6 +191,18 @@ describe("events D1 storage", () => {
         devices: 8,
         lastEventTime: 2000,
       });
+    });
+  });
+
+  describe("deleteEventsOlderThan", () => {
+    it("deletes events older than the cutoff timestamp", async () => {
+      run.mockResolvedValue({ meta: { changes: 3 } });
+
+      const deleted = await deleteEventsOlderThan(mockEnv, 1000);
+
+      expect(prepare).toHaveBeenCalledWith("DELETE FROM events WHERE timestamp < ?");
+      expect(bind).toHaveBeenCalledWith(1000);
+      expect(deleted).toBe(3);
     });
   });
 });

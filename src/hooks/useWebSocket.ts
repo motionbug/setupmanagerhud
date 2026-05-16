@@ -5,12 +5,18 @@ import { isFinishedWebhook } from "@/types";
 interface WebSocketState {
   connected: boolean;
   events: StoredEvent[];
+  health: {
+    status: "unknown" | "healthy" | "degraded";
+    d1?: string;
+    durableObjects?: string;
+  };
 }
 
 export function useWebSocket() {
   const [state, setState] = useState<WebSocketState>({
     connected: false,
     events: [],
+    health: { status: "unknown" },
   });
 
   const wsRef = useRef<WebSocket | null>(null);
@@ -79,6 +85,29 @@ export function useWebSocket() {
 
   useEffect(() => {
     connect();
+
+    fetch("/api/health")
+      .then(async (response) => {
+        const data = (await response.json()) as {
+          status?: "healthy" | "degraded";
+          d1?: string;
+          durable_objects?: string;
+        };
+        setState((prev) => ({
+          ...prev,
+          health: {
+            status: data.status === "healthy" ? "healthy" : "degraded",
+            d1: data.d1,
+            durableObjects: data.durable_objects,
+          },
+        }));
+      })
+      .catch(() => {
+        setState((prev) => ({
+          ...prev,
+          health: { status: "unknown" },
+        }));
+      });
 
     const pingInterval = setInterval(() => {
       if (wsRef.current?.readyState === WebSocket.OPEN) {
