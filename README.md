@@ -30,15 +30,15 @@ Setup Manager sends webhook events during macOS device provisioning. This dashbo
 
 Click the deploy button above. It will:
 1. Fork this repo to your GitHub account
-2. Set up a GitHub Actions workflow
-3. Deploy to your Cloudflare account
+2. Provision the Worker resources declared in `wrangler.toml`, including the D1 database binding named `DB`
+3. Set up a GitHub Actions workflow
+4. Build, apply D1 migrations, and deploy to your Cloudflare account
 
 > **Tip:** During setup, you'll be asked for a project name. This becomes your Worker URL (`<project-name>.<your-subdomain>.workers.dev`). You can name it anything you like — `setupmanagerhud`, `enrollment-dashboard`, or even something obscure like `x7k9-internal`. A less obvious name makes the URL harder to guess, which is fine as long as it's a valid URL (lowercase letters, numbers, and hyphens).
 
 After clicking Deploy, you'll need to:
-- Create a D1 database and bind it to your Worker as `DB` (see [D1 Database](#d1-database-required))
-- Apply the D1 migration from a local clone with Wrangler
 - Set a `WEBHOOK_TOKEN` secret on your Worker (see [Webhook Token](#webhook-token-required))
+- Check that the D1 database was provisioned and bound as `DB` (see [D1 Database](#d1-database-required))
 - Optionally [secure the dashboard](#security-setup) with Cloudflare Access
 
 ### Option 2: Manual Deploy
@@ -64,11 +64,10 @@ npx wrangler d1 create setupmanagerhud-events
 # -> Copy the database_id from the output
 
 # 5. Paste the D1 database ID into wrangler.toml:
-#    Uncomment the [[d1_databases]] section and set:
-#    database_id = "your-database-id-here"
+#    database_id = "your-d1-database-id-here"
 
 # 6. Apply the D1 migrations
-npx wrangler d1 migrations apply setupmanagerhud-events --remote
+npx wrangler d1 migrations apply DB --remote
 
 # 7. Set the webhook token secret
 npx wrangler secret put WEBHOOK_TOKEN
@@ -85,7 +84,7 @@ Your dashboard is now live at `https://setupmanagerhud.<your-subdomain>.workers.
 
 > **Note:** If you used the Deploy Button (Option 1), this is already set up for you. This section is for manual forks or if you need to reconfigure the workflow.
 
-This repo includes a GitHub Actions workflow that builds and deploys to Cloudflare Workers. It runs manually from the Actions tab — useful if you prefer deploying from GitHub instead of the command line.
+This repo includes a GitHub Actions workflow that builds, applies D1 migrations, and deploys to Cloudflare Workers. It runs manually from the Actions tab — useful if you prefer deploying from GitHub instead of the command line.
 
 GitHub Actions needs permission to deploy to your Cloudflare account. This is done through two repository secrets:
 
@@ -102,7 +101,7 @@ GitHub Actions needs permission to deploy to your Cloudflare account. This is do
    - Go to **Settings → Secrets and variables → Actions**
    - Add `CLOUDFLARE_API_TOKEN` with the token from step 2
    - Add `CLOUDFLARE_ACCOUNT_ID` with the ID from step 3
-5. Create your D1 database and bind it to your Worker (see [D1 Database](#d1-database-required) — use Option B for CLI)
+5. Create your D1 database and add its ID to `wrangler.toml` (see [D1 Database](#d1-database-required) for CLI steps)
 6. Set `WEBHOOK_TOKEN` as a Worker secret with Wrangler or in the Cloudflare dashboard
 7. Go to the **Actions** tab in your fork, select **Deploy to Cloudflare Workers**, and click **Run workflow**
 
@@ -156,20 +155,20 @@ Setup Manager sends this value in the `Authorization` header without the `Bearer
 
 Setup Manager HUD stores webhook events in [Cloudflare D1](https://developers.cloudflare.com/d1/). You need to create a database, apply the included migrations, and connect it to your Worker. Without this, webhook and API responses return a 503 configuration error and the dashboard shows a storage warning.
 
-For Deploy Button users, create a D1 database in the Cloudflare dashboard, bind it to your Worker with the variable name `DB`, then apply the migration from a local clone. A dashboard-created binding can be replaced by later GitHub redeploys if `wrangler.toml` does not include the same D1 binding, so permanent installs should also commit the D1 binding to their fork.
+For Deploy Button users, Cloudflare can provision the D1 database because the `DB` binding is declared in `wrangler.toml`. The deploy script applies migrations with the binding name (`DB`) before deploying the Worker. After deploy, confirm that the Worker has a D1 binding named `DB`.
 
 For CLI or GitHub Actions deployments, create a database, add its ID to `wrangler.toml`, and apply migrations:
 
 ```bash
 npx wrangler d1 create setupmanagerhud-events
-npx wrangler d1 migrations apply setupmanagerhud-events --remote
+npx wrangler d1 migrations apply DB --remote
 ```
 
 ```toml
 [[d1_databases]]
 binding = "DB"
 database_name = "setupmanagerhud-events"
-database_id = "paste-your-database-id-here"
+database_id = "paste-your-d1-database-id-here"
 ```
 
 See the wiki’s [Configuration guide](https://github.com/motionbug/setupmanagerhud/wiki/Configuration) for dashboard steps, CLI steps, and how redeploys affect bindings.
