@@ -14,8 +14,8 @@
     "dev:worker": "npx wrangler dev",
     "typecheck": "tsc --noEmit",
     "setup": "npx wrangler kv namespace create WEBHOOKS && echo '⚠️  Copy the namespace ID into wrangler.toml'",
-    "test": "vitest run",
-    "test:watch": "vitest"
+    "test": "npm run build && vitest run",
+    "test:watch": "npm run build && vitest"
   },
   "engines": {
     "node": ">=20.0.0"

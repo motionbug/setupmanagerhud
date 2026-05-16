@@ -37,6 +37,7 @@ Click the deploy button above. It will:
 
 After clicking Deploy, you'll need to:
 - Create a KV namespace and bind it to your Worker (see [KV Namespace](#kv-namespace-required)) — no CLI needed, this is done entirely in the Cloudflare dashboard
+- Set a `WEBHOOK_TOKEN` secret on your Worker (see [Webhook Token](#webhook-token-required))
 - Optionally [secure the dashboard](#security-setup) with Cloudflare Access
 
 ### Option 2: Manual Deploy
@@ -61,11 +62,14 @@ npx wrangler login
 npx wrangler kv namespace create WEBHOOKS
 # -> Copy the ID from the output
 
-# 5. Paste the KV namespace ID into wrangler.toml
+# 5. Paste the KV namespace ID into wrangler.toml:
 #    Uncomment the [[kv_namespaces]] section and set:
 #    id = "your-namespace-id-here"
 
-# 6. Deploy
+# 6. Set the webhook token secret
+npx wrangler secret put WEBHOOK_TOKEN
+
+# 7. Deploy
 npm run deploy
 ```
 
@@ -95,7 +99,8 @@ GitHub Actions needs permission to deploy to your Cloudflare account. This is do
    - Add `CLOUDFLARE_API_TOKEN` with the token from step 2
    - Add `CLOUDFLARE_ACCOUNT_ID` with the ID from step 3
 5. Create your KV namespace and bind it to your Worker (see [KV Namespace](#kv-namespace-required) — use Option B for CLI)
-6. Go to the **Actions** tab in your fork, select **Deploy to Cloudflare Workers**, and click **Run workflow**
+6. Set `WEBHOOK_TOKEN` as a Worker secret with Wrangler or in the Cloudflare dashboard
+7. Go to the **Actions** tab in your fork, select **Deploy to Cloudflare Workers**, and click **Run workflow**
 
 ## Security Setup
 
@@ -109,6 +114,20 @@ Setup Manager HUD supports authentication to protect the dashboard and webhook t
 - **Rate limiting** prevents abuse — [WAF rules guide](https://github.com/motionbug/setupmanagerhud/wiki/Security#rate-limiting-the-webhook-endpoint)
 
 ## Configuration
+
+### Webhook Token (Required)
+
+Setup Manager HUD requires a shared token for `POST /webhook`. Generate a long random value, set it as the Worker secret `WEBHOOK_TOKEN`, and configure Setup Manager to send the same value.
+
+With Wrangler:
+
+```bash
+npx wrangler secret put WEBHOOK_TOKEN
+```
+
+Or in the Cloudflare dashboard, open your Worker, go to **Settings → Variables and Secrets**, add a secret named `WEBHOOK_TOKEN`, and redeploy if prompted.
+
+Setup Manager sends this value in the `Authorization` header without the `Bearer` prefix. The Worker accepts both raw tokens and standard `Bearer` tokens so curl and other tools are easy to use.
 
 ### KV Namespace (Required)
 
@@ -187,7 +206,7 @@ If either the `started` or `finished` key is missing, no webhook will be sent fo
 Setup Manager will POST enrollment events to this endpoint. They'll appear on the dashboard in real-time.
 
 > [!NOTE]
-> To require authentication on webhook requests, see [Webhook Token Setup](https://github.com/motionbug/setupmanagerhud/wiki/Security#webhook-token-setup-required-for-production) in the wiki.
+> Webhook requests require `WEBHOOK_TOKEN`. See [Webhook Token Setup](https://github.com/motionbug/setupmanagerhud/wiki/Security#webhook-token-setup-required-for-production) in the wiki.
 
 ### Test with a Sample Webhook
 
@@ -196,6 +215,7 @@ You can test without Setup Manager by sending a sample webhook:
 ```bash
 curl -X POST https://setupmanagerhud.<your-subdomain>.workers.dev/webhook \
   -H "Content-Type: application/json" \
+  -H "Authorization: your-webhook-token" \
   -d '{
     "name": "Started",
     "event": "com.jamf.setupmanager.started",
@@ -225,7 +245,7 @@ npm run dev:worker
 
 For local Worker development, create a `.dev.vars` file (see `.dev.vars.example`).
 
-> **Note:** Cloudflare Access is not active during local development. The dashboard is unprotected when running locally — this is expected and convenient for development.
+> **Note:** Cloudflare Access is not active during local development. The dashboard is unprotected when running locally, but `/webhook` still requires `WEBHOOK_TOKEN`.
 
 ## Testing the Dashboard
 
@@ -238,16 +258,11 @@ The included test script generates 140 realistic webhook events (70 started + 70
 ```bash
 # Replace with your actual Worker URL
 WORKER_URL=https://setupmanagerhud.<your-subdomain>.workers.dev \
+  WEBHOOK_TOKEN=your-token-here \
   node scripts/send-dummy-events.js
 ```
 
-If you have a `WEBHOOK_SECRET` configured on your Worker, pass it along:
-
-```bash
-WORKER_URL=https://setupmanagerhud.<your-subdomain>.workers.dev \
-  WEBHOOK_SECRET=your-secret-here \
-  node scripts/send-dummy-events.js
-```
+The script sends the token as `Authorization: Bearer <token>`. Setup Manager sends the same token as a raw `Authorization` header; both formats are accepted.
 
 Once the script finishes, open the dashboard in your browser. You should see events appearing with device details, enrollment actions, and charts populated with data.
 
@@ -319,7 +334,7 @@ After testing, you'll likely want to remove the dummy events. Cloudflare KV entr
 |---------|--------------|----------|
 | Worker returns 500 error | KV namespace not bound | See [KV Namespace](#kv-namespace-required) setup |
 | Dashboard shows no events | WebSocket not connecting | Check browser console for errors |
-| Webhook returns 401 | Token mismatch | Verify `WEBHOOK_SECRET` matches your Setup Manager config |
+| Webhook returns 401 | Token mismatch | Verify `WEBHOOK_TOKEN` matches your Setup Manager config |
 | Can't access dashboard | Cloudflare Access misconfigured | Check `CF_ACCESS_AUD` and `CF_ACCESS_TEAM_DOMAIN` |
 
 ### KV Namespace Not Working
@@ -350,7 +365,7 @@ curl -H "Authorization: Bearer your-secret" ...
 curl -H "Authorization: your-secret" ...
 ```
 
-If webhooks return 401, verify the token in your Setup Manager plist matches the `WEBHOOK_SECRET` set on your Worker exactly (case-sensitive, no extra whitespace).
+If webhooks return 401, verify the token in your Setup Manager plist matches the `WEBHOOK_TOKEN` set on your Worker exactly (case-sensitive, no extra whitespace).
 
 ## Contributing
 

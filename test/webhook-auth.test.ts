@@ -1,5 +1,4 @@
-import test from "node:test";
-import assert from "node:assert/strict";
+import { expect, test } from "vitest";
 import { handleWebhook, type Env } from "../src/index.ts";
 
 const VALID_PAYLOAD = {
@@ -15,18 +14,27 @@ const VALID_PAYLOAD = {
   setupManagerVersion: "2.0.0",
 };
 
+function createKvNamespace(
+  put: KVNamespace["put"] = async () => undefined,
+): KVNamespace {
+  return { put } as unknown as KVNamespace;
+}
+
+function createDashboardRoomNamespace(): DurableObjectNamespace {
+  const stub = {
+    fetch: async () => new Response(null, { status: 200 }),
+  } as unknown as DurableObjectStub;
+
+  return {
+    idFromName: () => ({} as DurableObjectId),
+    get: () => stub,
+  } as unknown as DurableObjectNamespace;
+}
+
 function createEnv(overrides: Partial<Env> = {}): Env {
   return {
-    WEBHOOKS: {
-      put: async () => undefined,
-    } as KVNamespace,
-    DASHBOARD_ROOM: {
-      idFromName: () => "main" as DurableObjectId,
-      get: () =>
-        ({
-          fetch: async () => new Response(null, { status: 200 }),
-        }) as DurableObjectStub,
-    } as DurableObjectNamespace,
+    WEBHOOKS: createKvNamespace(),
+    DASHBOARD_ROOM: createDashboardRoomNamespace(),
     ...overrides,
   };
 }
@@ -49,8 +57,8 @@ test("rejects webhook requests when WEBHOOK_TOKEN is not configured", async () =
     createEnv({ WEBHOOK_TOKEN: undefined }),
   );
 
-  assert.equal(response.status, 503);
-  assert.deepEqual(await response.json(), {
+  expect(response.status).toBe(503);
+  expect(await response.json()).toEqual({
     error: "Webhook authentication is not configured",
   });
 });
@@ -61,8 +69,8 @@ test("rejects webhook requests without an Authorization header", async () => {
     createEnv({ WEBHOOK_TOKEN: "expected-token" }),
   );
 
-  assert.equal(response.status, 401);
-  assert.deepEqual(await response.json(), { error: "Unauthorized" });
+  expect(response.status).toBe(401);
+  expect(await response.json()).toEqual({ error: "Unauthorized" });
 });
 
 test("rejects webhook requests with the wrong Authorization token", async () => {
@@ -71,8 +79,8 @@ test("rejects webhook requests with the wrong Authorization token", async () => 
     createEnv({ WEBHOOK_TOKEN: "expected-token" }),
   );
 
-  assert.equal(response.status, 401);
-  assert.deepEqual(await response.json(), { error: "Unauthorized" });
+  expect(response.status).toBe(401);
+  expect(await response.json()).toEqual({ error: "Unauthorized" });
 });
 
 test("accepts a valid payload with the correct Authorization token", async () => {
@@ -82,16 +90,19 @@ test("accepts a valid payload with the correct Authorization token", async () =>
     createRequest(),
     createEnv({
       WEBHOOK_TOKEN: "expected-token",
-      WEBHOOKS: {
-        put: async (key: string) => {
+      WEBHOOKS: createKvNamespace(
+        async (key: string) => {
           storedKey = key;
         },
-      } as KVNamespace,
+      ),
     }),
   );
 
-  assert.equal(response.status, 200);
-  assert.ok(storedKey?.startsWith("com.jamf.setupmanager.started:TESTSERIAL01:"));
+  expect(response.status).toBe(200);
+  if (storedKey === null) {
+    throw new Error("Expected webhook event to be stored");
+  }
+  expect(storedKey).toMatch(/^com\.jamf\.setupmanager\.started:TESTSERIAL01:/);
 });
 
 test("returns 400 for invalid payloads after auth succeeds", async () => {
@@ -101,16 +112,24 @@ test("returns 400 for invalid payloads after auth succeeds", async () => {
     createEnv({ WEBHOOK_TOKEN: "expected-token" }),
   );
 
-  assert.equal(response.status, 400);
-  assert.deepEqual(await response.json(), { error: "Invalid webhook payload" });
+  expect(response.status).toBe(400);
+  expect(await response.json()).toEqual({ error: "Invalid webhook payload" });
 });
 
-test("does not accept Bearer-prefixed Authorization headers", async () => {
+test("accepts Bearer-prefixed Authorization headers", async () => {
   const response = await handleWebhook(
     createRequest({ Authorization: "Bearer expected-token" }),
     createEnv({ WEBHOOK_TOKEN: "expected-token" }),
   );
 
-  assert.equal(response.status, 401);
-  assert.deepEqual(await response.json(), { error: "Unauthorized" });
+  expect(response.status).toBe(200);
+});
+
+test("falls back to WEBHOOK_SECRET during migration", async () => {
+  const response = await handleWebhook(
+    createRequest({ Authorization: "Bearer legacy-token" }),
+    createEnv({ WEBHOOK_SECRET: "legacy-token" }),
+  );
+
+  expect(response.status).toBe(200);
 });

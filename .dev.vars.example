@@ -1,3 +1,5 @@
 # Copy this file to .dev.vars for local development
-# No secrets are required — the dashboard works without authentication locally
-# Authentication is handled by Cloudflare Access at the network edge (see README)
+WEBHOOK_TOKEN=replace-with-a-local-test-token
+
+# Cloudflare Access is handled at the network edge in production.
+# Leave CF_ACCESS_AUD and CF_ACCESS_TEAM_DOMAIN unset for local development.

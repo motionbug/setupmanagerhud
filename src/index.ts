@@ -11,6 +11,7 @@ export { DashboardRoom };
 interface Env {
   WEBHOOKS: KVNamespace;
   DASHBOARD_ROOM: DurableObjectNamespace;
+  WEBHOOK_TOKEN?: string;
   WEBHOOK_SECRET?: string;
   ASSETS?: Fetcher;
   CF_ACCESS_AUD?: string;
@@ -234,38 +235,77 @@ async function validateAccessJwt(
 /** Maximum webhook payload size in bytes (8 KB) */
 const MAX_WEBHOOK_PAYLOAD_SIZE = 8192;
 
+function logWebhookRejection(
+  request: Request,
+  reason: string,
+  details: Record<string, unknown> = {},
+): void {
+  const authHeader = request.headers.get("Authorization");
+  const authScheme = authHeader?.startsWith("Bearer ")
+    ? "bearer"
+    : authHeader
+      ? "raw"
+      : "missing";
+
+  console.warn("Webhook rejected", {
+    reason,
+    method: request.method,
+    path: new URL(request.url).pathname,
+    contentType: request.headers.get("Content-Type"),
+    userAgent: request.headers.get("User-Agent"),
+    authScheme,
+    authHeaderLength: authHeader?.length ?? 0,
+    ...details,
+  });
+}
+
 // POST /webhook
-async function handleWebhook(request: Request, env: Env): Promise<Response> {
+export async function handleWebhook(request: Request, env: Env): Promise<Response> {
   // Reject oversized payloads before parsing
   const contentLength = parseInt(request.headers.get("Content-Length") || "0", 10);
   if (contentLength > MAX_WEBHOOK_PAYLOAD_SIZE) {
+    logWebhookRejection(request, "payload_too_large", {
+      contentLength,
+      maxPayloadSize: MAX_WEBHOOK_PAYLOAD_SIZE,
+    });
     return json({ error: "Payload too large" }, 413, request);
   }
 
   // Require application/json Content-Type to block form-based CSRF
   const contentType = request.headers.get("Content-Type");
   if (!contentType || !contentType.includes("application/json")) {
+    logWebhookRejection(request, "invalid_content_type");
     return json({ error: "Content-Type must be application/json" }, 415, request);
   }
 
-  // Optional: validate webhook token if WEBHOOK_SECRET is set
-  const webhookSecret = env.WEBHOOK_SECRET;
-  if (webhookSecret) {
-    const authHeader = request.headers.get("Authorization");
-    // Support both "Bearer <token>" (standard) and raw token (Setup Manager)
-    const token = authHeader?.startsWith("Bearer ")
-      ? authHeader.slice(7)
-      : authHeader;
+  const webhookToken = env.WEBHOOK_TOKEN ?? env.WEBHOOK_SECRET;
+  if (!webhookToken) {
+    logWebhookRejection(request, "missing_worker_token");
+    return json({ error: "Webhook authentication is not configured" }, 503, request);
+  }
 
-    if (!token || !(await timingSafeEqual(token, webhookSecret))) {
-      return json({ error: "Unauthorized" }, 401, request);
-    }
+  const authHeader = request.headers.get("Authorization");
+  const bearerToken = authHeader?.startsWith("Bearer ")
+    ? authHeader.slice("Bearer ".length)
+    : null;
+  const authorized =
+    !!authHeader &&
+    ((await timingSafeEqual(authHeader, webhookToken)) ||
+      (!!bearerToken && (await timingSafeEqual(bearerToken, webhookToken))));
+
+  if (!authorized) {
+    logWebhookRejection(request, "token_mismatch", {
+      configuredTokenLength: webhookToken.length,
+      bearerTokenLength: bearerToken?.length ?? null,
+    });
+    return json({ error: "Unauthorized" }, 401, request);
   }
 
   let payload: unknown;
   try {
     payload = await request.json();
   } catch {
+    logWebhookRejection(request, "invalid_json");
     return json({ error: "Invalid JSON payload" }, 400, request);
   }
 
@@ -470,3 +510,5 @@ export { validateAccessJwt as _testValidateAccessJwt };
 
 /** @internal Exported for testing only - Env type for test mocks */
 export type { Env as _TestEnv };
+
+export type { Env };

@@ -1,5 +1,43 @@
 import { describe, it, expect } from "vitest";
-import { exports, env } from "cloudflare:workers";
+import { env } from "cloudflare:workers";
+import worker, { type _TestEnv as Env } from "./index";
+
+const storedEvents = new Map<string, string>();
+
+const testKv = {
+  get: async (key: string) => storedEvents.get(key) ?? null,
+  put: async (key: string, value: string) => {
+    storedEvents.set(key, value);
+  },
+  list: async () => ({
+    keys: Array.from(storedEvents.keys()).map((name) => ({ name })),
+    list_complete: true,
+    cursor: undefined,
+    cacheStatus: null,
+  }),
+} as unknown as KVNamespace;
+
+const testDashboardRoom = {
+  idFromName: () => ({} as DurableObjectId),
+  get: () =>
+    ({
+      fetch: async () => new Response(null, { status: 200 }),
+    }) as unknown as DurableObjectStub,
+} as unknown as DurableObjectNamespace;
+
+function fetchWorker(input: string, init?: RequestInit): Promise<Response> {
+  return worker.fetch(new Request(input, init), {
+    ...(env as Env),
+    WEBHOOKS: testKv,
+    DASHBOARD_ROOM: testDashboardRoom,
+    WEBHOOK_TOKEN: "test-token",
+  });
+}
+
+const authorizedJsonHeaders = {
+  Authorization: "test-token",
+  "Content-Type": "application/json",
+};
 
 describe("Security Headers", () => {
   const requiredHeaders = [
@@ -13,7 +51,7 @@ describe("Security Headers", () => {
 
   describe("on API responses", () => {
     it("includes all security headers on /api/health", async () => {
-      const response = await exports.default.fetch("http://localhost/api/health", {
+      const response = await fetchWorker("http://localhost/api/health", {
         method: "GET",
       });
 
@@ -25,7 +63,7 @@ describe("Security Headers", () => {
     });
 
     it("includes all security headers on /api/events", async () => {
-      const response = await exports.default.fetch("http://localhost/api/events", {
+      const response = await fetchWorker("http://localhost/api/events", {
         method: "GET",
       });
 
@@ -50,9 +88,9 @@ describe("Security Headers", () => {
         setupManagerVersion: "2.0.0",
       };
 
-      const response = await exports.default.fetch("http://localhost/webhook", {
+      const response = await fetchWorker("http://localhost/webhook", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: authorizedJsonHeaders,
         body: JSON.stringify(validPayload),
       });
 
@@ -66,13 +104,13 @@ describe("Security Headers", () => {
 
   describe("Strict-Transport-Security (SEC-02, D-03)", () => {
     it("has max-age of 31536000 (1 year)", async () => {
-      const response = await exports.default.fetch("http://localhost/api/health");
+      const response = await fetchWorker("http://localhost/api/health");
       const hsts = response.headers.get("Strict-Transport-Security");
       expect(hsts).toContain("max-age=31536000");
     });
 
     it("includes includeSubDomains directive", async () => {
-      const response = await exports.default.fetch("http://localhost/api/health");
+      const response = await fetchWorker("http://localhost/api/health");
       const hsts = response.headers.get("Strict-Transport-Security");
       expect(hsts).toContain("includeSubDomains");
     });
@@ -80,13 +118,13 @@ describe("Security Headers", () => {
 
   describe("Content-Security-Policy (SEC-01)", () => {
     it("includes default-src directive", async () => {
-      const response = await exports.default.fetch("http://localhost/api/health");
+      const response = await fetchWorker("http://localhost/api/health");
       const csp = response.headers.get("Content-Security-Policy");
       expect(csp).toContain("default-src");
     });
 
     it("includes frame-ancestors 'none'", async () => {
-      const response = await exports.default.fetch("http://localhost/api/health");
+      const response = await fetchWorker("http://localhost/api/health");
       const csp = response.headers.get("Content-Security-Policy");
       expect(csp).toContain("frame-ancestors 'none'");
     });
@@ -108,9 +146,9 @@ describe("Event ID randomness (SEC-05, D-04)", () => {
       setupManagerVersion: "2.0.0",
     };
 
-    const response = await exports.default.fetch("http://localhost/webhook", {
+    const response = await fetchWorker("http://localhost/webhook", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: authorizedJsonHeaders,
       body: JSON.stringify(validPayload),
     });
 
@@ -137,15 +175,15 @@ describe("Event ID randomness (SEC-05, D-04)", () => {
       setupManagerVersion: "2.0.0",
     };
 
-    const response1 = await exports.default.fetch("http://localhost/webhook", {
+    const response1 = await fetchWorker("http://localhost/webhook", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: authorizedJsonHeaders,
       body: JSON.stringify(validPayload),
     });
 
-    const response2 = await exports.default.fetch("http://localhost/webhook", {
+    const response2 = await fetchWorker("http://localhost/webhook", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: authorizedJsonHeaders,
       body: JSON.stringify(validPayload),
     });
 
