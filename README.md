@@ -36,8 +36,11 @@ Click the deploy button above. It will:
 
 > **Tip:** During setup, you'll be asked for a project name. This becomes your Worker URL (`<project-name>.<your-subdomain>.workers.dev`). You can name it anything you like — `setupmanagerhud`, `enrollment-dashboard`, or even something obscure like `x7k9-internal`. A less obvious name makes the URL harder to guess, which is fine as long as it's a valid URL (lowercase letters, numbers, and hyphens).
 
+> [!IMPORTANT]
+> If the Deploy Button setup asks for `WEBHOOK_TOKEN`, enter a long random value and save it somewhere secure. Do not leave it blank. You must configure Setup Manager with this exact same value or webhook requests will be rejected.
+
 After clicking Deploy, you'll need to:
-- Set a `WEBHOOK_TOKEN` secret on your Worker (see [Webhook Token](#webhook-token-required))
+- Confirm that `WEBHOOK_TOKEN` has a non-empty value you know and saved (see [Webhook Token](#webhook-token-required))
 - Check that the D1 database was provisioned and bound as `DB` (see [D1 Database](#d1-database-required))
 - Optionally [secure the dashboard](#security-setup) with Cloudflare Access
 
@@ -139,7 +142,7 @@ See the wiki’s [JWT validation section](https://github.com/motionbug/setupmana
 
 ### Webhook Token (Required)
 
-Setup Manager HUD requires a shared token for `POST /webhook`. Generate a long random value, set it as the Worker secret `WEBHOOK_TOKEN`, and configure Setup Manager to send the same value.
+Setup Manager HUD requires a shared token for `POST /webhook`. Generate a long random value, set it as the Worker secret `WEBHOOK_TOKEN`, and configure Setup Manager to send the same value. The value must not be blank, and you need to save it because Cloudflare hides Worker secrets after they are saved.
 
 With Wrangler:
 
