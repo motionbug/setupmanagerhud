@@ -21,14 +21,14 @@ new_sqlite_classes = ["DashboardRoom"]
 [triggers]
 crons = ["0 3 * * *"]
 
-# D1 for event persistence
-# REQUIRED for production: create a D1 database and bind it to DB.
-# For CLI/GitHub deploys, uncomment this section and paste your database ID.
-# Deploy Button users can also create and bind DB in the Cloudflare dashboard.
-# [[d1_databases]]
-# binding = "DB"
-# database_name = "setupmanagerhud-events"
-# database_id = "paste-your-d1-database-id-here"
+# D1 for event persistence.
+# Cloudflare's Deploy Button can provision this resource because the binding is
+# declared here. Manual CLI users should replace database_id with the UUID from:
+# npx wrangler d1 create setupmanagerhud-events
+[[d1_databases]]
+binding = "DB"
+database_name = "setupmanagerhud-events"
+database_id = "setupmanagerhud-events"
 
 # Webhook token authentication (required for /webhook)
 # Set this with: npx wrangler secret put WEBHOOK_TOKEN

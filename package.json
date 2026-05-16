@@ -9,16 +9,26 @@
     "dev": "vite dev",
     "build": "vite build",
     "preview": "vite preview",
-    "deploy": "npm run build && npx wrangler deploy",
+    "deploy": "npm run build && npx wrangler d1 migrations apply DB --remote && npx wrangler deploy",
     "deploy:prod": "npm run build && npx wrangler deploy -c wrangler.production.toml",
     "dev:worker": "npx wrangler dev",
     "typecheck": "tsc --noEmit",
-    "setup": "npx wrangler d1 create setupmanagerhud-events && echo 'Copy the database_id into wrangler.toml, then run: npx wrangler d1 migrations apply setupmanagerhud-events --remote'",
+    "setup": "npx wrangler d1 create setupmanagerhud-events && echo 'Copy the database_id into wrangler.toml, then run: npx wrangler d1 migrations apply DB --remote'",
     "test": "npm run build && vitest run",
     "test:watch": "npm run build && vitest"
   },
   "engines": {
     "node": ">=20.0.0"
+  },
+  "cloudflare": {
+    "bindings": {
+      "DB": {
+        "description": "D1 database used to store Setup Manager webhook events, dashboard history, stats, and filters."
+      },
+      "WEBHOOK_TOKEN": {
+        "description": "Shared secret for Setup Manager webhook POSTs. Generate a long random value and configure the same value in Setup Manager."
+      }
+    }
   },
   "dependencies": {
     "@fontsource-variable/figtree": "^5.2.10",
