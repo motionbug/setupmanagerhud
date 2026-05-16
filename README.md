@@ -2,7 +2,7 @@
 
 A real-time webhook dashboard for [Setup Manager](https://github.com/nicknameislink/setupmanager) - monitor macOS device enrollments as they happen.
 
-Built with React, shadcn/ui, and Cloudflare Workers. Deploys in minutes. Secured with Cloudflare Access.
+Built with React, shadcn/ui, and Cloudflare Workers. Deploys in minutes. Webhooks are protected with a required secret token; the dashboard can optionally be protected with Cloudflare Access.
 
 | Dark Mode | Light Mode |
 |-----------|------------|
@@ -75,7 +75,7 @@ npm run deploy
 
 Your dashboard is now live at `https://setupmanagerhud.<your-subdomain>.workers.dev`
 
-**Next step:** [Secure the dashboard](#security-setup) so only you can access it.
+**Next step:** Configure Setup Manager to send your `WEBHOOK_TOKEN`. You can also [secure the dashboard](#security-setup) with Cloudflare Access so only authorized users can view it.
 
 ### Option 3: GitHub Actions
 
@@ -104,18 +104,18 @@ GitHub Actions needs permission to deploy to your Cloudflare account. This is do
 
 ## Security Setup
 
-Setup Manager HUD supports authentication to protect the dashboard and webhook token validation to ensure only your devices can send enrollment events.
+Setup Manager HUD has two separate security layers: a required webhook token for device POSTs, and optional Cloudflare Access protection for the dashboard.
 
 > [!TIP]
 > **Full security setup guide:** [Security](https://github.com/motionbug/setupmanagerhud/wiki/Security) covers webhook token configuration, Cloudflare Access setup, and rate limiting.
 
-- **Cloudflare Access** protects the dashboard — [setup guide](https://github.com/motionbug/setupmanagerhud/wiki/Security#cloudflare-access-setup)
-- **Webhook tokens** validate device requests — [configuration guide](https://github.com/motionbug/setupmanagerhud/wiki/Security#webhook-token-setup-required-for-production)
+- **Webhook token** is required for `/webhook` — [configuration guide](https://github.com/motionbug/setupmanagerhud/wiki/Security#webhook-token-setup-required-for-production)
+- **Cloudflare Access** is optional dashboard authentication — [setup guide](https://github.com/motionbug/setupmanagerhud/wiki/Security#cloudflare-access-optional-dashboard-authentication)
 - **Rate limiting** prevents abuse — [WAF rules guide](https://github.com/motionbug/setupmanagerhud/wiki/Security#rate-limiting-the-webhook-endpoint)
 
 ### Cloudflare Access JWT Validation
 
-Cloudflare Access protects the dashboard at the edge. You can also have the Worker verify Cloudflare Access JWTs before serving dashboard, API, and WebSocket requests. This is a production hardening step and is separate from `WEBHOOK_TOKEN`; `/webhook` must bypass Access so Setup Manager devices can post events. When JWT validation is enabled, rejected dashboard/API requests return `403` from the Worker and still include the standard security headers.
+Cloudflare Access is optional dashboard authentication. If you enable it, you can also have the Worker verify Cloudflare Access JWTs before serving dashboard, API, and WebSocket requests. This hardening step is separate from the required `WEBHOOK_TOKEN`; `/webhook` must bypass Access so Setup Manager devices can post events. When JWT validation is enabled, rejected dashboard/API requests return `403` from the Worker and still include the standard security headers.
 
 To enable Worker-side JWT validation, create your Access application, find its audience tag and team domain, then add these values to `wrangler.toml`:
 
@@ -255,10 +255,10 @@ Dummy events use serial numbers starting with `DUMMY` and expire automatically a
 
 ```
                     ┌─── Cloudflare Access ───┐
-                    │   (authentication gate)  │
+                    │ (optional dashboard auth) │
                     └──────────┬───────────────┘
                                │
-                    Authenticated requests only
+                    Authenticated dashboard requests
                                │
                                ▼
 ┌─────────────────────────────────────────────────┐
@@ -279,7 +279,7 @@ Dummy events use serial numbers starting with `DUMMY` and expire automatically a
 └─────────────────────────────────────────────────┘
 ```
 
-- **Cloudflare Access** - Authentication gate at the edge. Protects the dashboard, bypasses the webhook. Free for up to 50 users.
+- **Cloudflare Access** - Optional authentication gate at the edge. Protects the dashboard when enabled; `/webhook` stays reachable and is protected by `WEBHOOK_TOKEN`.
 - **Cloudflare Workers** - Serverless edge runtime, handles all HTTP and WebSocket traffic
 - **Durable Objects** - WebSocket hub with hibernation for real-time event broadcasting
 - **Workers KV** - Event storage with 90-day TTL
@@ -292,7 +292,7 @@ Dummy events use serial numbers starting with `DUMMY` and expire automatically a
 | Worker returns 500 error | KV namespace not bound | See [KV setup](https://github.com/motionbug/setupmanagerhud/wiki/Configuration#kv-namespace-required) |
 | Dashboard shows no events | WebSocket not connecting | Check browser console for errors |
 | Webhook returns 401 | Token mismatch | Verify `WEBHOOK_TOKEN` matches your Setup Manager config |
-| Can't access dashboard | Cloudflare Access misconfigured | Check `CF_ACCESS_AUD` and `CF_ACCESS_TEAM_DOMAIN` |
+| Can't access dashboard after enabling Access | Cloudflare Access misconfigured | Check `CF_ACCESS_AUD` and `CF_ACCESS_TEAM_DOMAIN` |
 
 For detailed fixes, see the [Troubleshooting wiki](https://github.com/motionbug/setupmanagerhud/wiki/Troubleshooting). For token behavior, see [Webhook Authentication Format](https://github.com/motionbug/setupmanagerhud/wiki/Troubleshooting#webhooks-return-401-unauthorized).
 
