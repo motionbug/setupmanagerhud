@@ -2,20 +2,40 @@ import { describe, it, expect } from "vitest";
 import { env } from "cloudflare:workers";
 import worker, { type _TestEnv as Env } from "./index";
 
-const storedEvents = new Map<string, string>();
+const storedEvents = new Map<string, { timestamp: number; payload_json: string }>();
 
-const testKv = {
-  get: async (key: string) => storedEvents.get(key) ?? null,
-  put: async (key: string, value: string) => {
-    storedEvents.set(key, value);
-  },
-  list: async () => ({
-    keys: Array.from(storedEvents.keys()).map((name) => ({ name })),
-    list_complete: true,
-    cursor: undefined,
-    cacheStatus: null,
+const testDb = {
+  prepare: (sql: string) => ({
+    bind: (...values: unknown[]) => ({
+      run: async () => {
+        const eventId = String(values[0]);
+        storedEvents.set(eventId, {
+          timestamp: Number(values[3]),
+          payload_json: String(values[4]),
+        });
+        return { success: true };
+      },
+      all: async () => ({
+        results: Array.from(storedEvents.entries())
+          .sort((a, b) => b[1].timestamp - a[1].timestamp)
+          .map(([event_id, row]) => ({ event_id, ...row })),
+      }),
+    }),
+    first: async () => {
+      if (sql.includes("SELECT 1")) return { "1": 1 };
+      return {
+        total: storedEvents.size,
+        started: 0,
+        finished: 0,
+        avg_duration: null,
+        failed_actions: 0,
+        total_actions: 0,
+        devices: 0,
+        last_event_time: null,
+      };
+    },
   }),
-} as unknown as KVNamespace;
+} as unknown as D1Database;
 
 const testDashboardRoom = {
   idFromName: () => ({} as DurableObjectId),
@@ -28,7 +48,7 @@ const testDashboardRoom = {
 function fetchWorker(input: string, init?: RequestInit): Promise<Response> {
   return worker.fetch(new Request(input, init), {
     ...(env as Env),
-    WEBHOOKS: testKv,
+    DB: testDb,
     DASHBOARD_ROOM: testDashboardRoom,
     WEBHOOK_TOKEN: "test-token",
   });

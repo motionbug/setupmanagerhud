@@ -16,13 +16,14 @@ class_name = "DashboardRoom"
 tag = "v1"
 new_sqlite_classes = ["DashboardRoom"]
 
-# KV for event persistence
-# REQUIRED for production: create a KV namespace and bind it to WEBHOOKS.
-# For CLI/GitHub deploys, uncomment this section and paste your namespace ID.
-# Deploy Button users can also create and bind WEBHOOKS in the Cloudflare dashboard.
-# [[kv_namespaces]]
-# binding = "WEBHOOKS"
-# id = "paste-your-kv-namespace-id-here"
+# D1 for event persistence
+# REQUIRED for production: create a D1 database and bind it to DB.
+# For CLI/GitHub deploys, uncomment this section and paste your database ID.
+# Deploy Button users can also create and bind DB in the Cloudflare dashboard.
+# [[d1_databases]]
+# binding = "DB"
+# database_name = "setupmanagerhud-events"
+# database_id = "paste-your-d1-database-id-here"
 
 # Webhook token authentication (required for /webhook)
 # Set this with: npx wrangler secret put WEBHOOK_TOKEN
