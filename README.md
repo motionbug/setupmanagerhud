@@ -113,6 +113,25 @@ Setup Manager HUD supports authentication to protect the dashboard and webhook t
 - **Webhook tokens** validate device requests — [configuration guide](https://github.com/motionbug/setupmanagerhud/wiki/Security#webhook-token-setup-required-for-production)
 - **Rate limiting** prevents abuse — [WAF rules guide](https://github.com/motionbug/setupmanagerhud/wiki/Security#rate-limiting-the-webhook-endpoint)
 
+### Cloudflare Access JWT Validation
+
+Cloudflare Access protects the dashboard at the edge. You can also have the Worker verify Cloudflare Access JWTs before serving dashboard, API, and WebSocket requests. This is a production hardening step and is separate from `WEBHOOK_TOKEN`; `/webhook` must bypass Access so Setup Manager devices can post events.
+
+To enable Worker-side JWT validation, create your Access application, find its audience tag and team domain, then add these values to `wrangler.toml`:
+
+```toml
+[vars]
+CF_ACCESS_AUD = "paste-your-audience-tag-here"
+CF_ACCESS_TEAM_DOMAIN = "your-team.cloudflareaccess.com"
+```
+
+If you used the Deploy Button, Cloudflare created a copy of this repository in your GitHub account and deployed from that copy. Update `wrangler.toml` in that copied repo, then redeploy in one of two ways:
+
+- Clone your copied repo locally, run `npm install`, edit `wrangler.toml`, then run `npx wrangler login` and `npm run deploy`.
+- Edit `wrangler.toml` in GitHub, make sure Actions are enabled and `CLOUDFLARE_API_TOKEN` / `CLOUDFLARE_ACCOUNT_ID` secrets exist, then run the deploy workflow.
+
+See the wiki’s [JWT validation section](https://github.com/motionbug/setupmanagerhud/wiki/Security#optional-verify-cloudflare-access-jwts-in-the-worker) for the full walkthrough.
+
 ## Configuration
 
 ### Webhook Token (Required)
@@ -343,7 +362,7 @@ If webhooks return 200 OK but events don't appear on the dashboard:
 
 1. **Verify the KV binding name is exactly `WEBHOOKS`** — the code references `env.WEBHOOKS`, so the binding variable name must match
 2. **Check the binding is active** — in Cloudflare Dashboard, go to Workers & Pages → your Worker → Settings → Bindings and confirm WEBHOOKS is listed
-3. **Redeploys can remove dashboard-set bindings** — if you bound KV via the dashboard but later redeployed from GitHub, the `wrangler.toml` placeholder ID may have overwritten your binding. Either:
+3. **Redeploys can remove dashboard-set bindings** — if you bound KV via the dashboard but later redeployed from GitHub with a different `wrangler.toml` KV section, that config can overwrite your dashboard binding. Either:
    - Re-bind via the dashboard after each deploy, or
    - Update `wrangler.toml` with your actual KV namespace ID for persistent bindings
 
