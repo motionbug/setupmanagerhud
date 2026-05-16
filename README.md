@@ -152,45 +152,13 @@ Setup Manager sends this value in the `Authorization` header without the `Bearer
 
 Setup Manager HUD stores webhook events in [Cloudflare Workers KV](https://developers.cloudflare.com/kv/). You need to create a namespace and connect it to your Worker. Without this, the Worker will return a 500 error when receiving webhooks.
 
-#### Option A: Cloudflare Dashboard (recommended for Deploy Button users)
+For Deploy Button users, the easiest path is the Cloudflare dashboard: create a KV namespace, then bind it to your Worker with the variable name `WEBHOOKS`.
 
-No CLI or code changes needed — everything is done in the browser.
-
-**1. Create the namespace:**
-
-1. Log in to the [Cloudflare dashboard](https://dash.cloudflare.com)
-2. Go to [**Workers & Pages → KV**](https://dash.cloudflare.com/?to=/:account/workers/kv/namespaces) in the left sidebar
-3. Click **Create a namespace**
-4. Name it `WEBHOOKS` (or any name you prefer)
-5. Click **Add**
-
-**2. Bind it to your Worker:**
-
-1. Go to [**Workers & Pages**](https://dash.cloudflare.com/?to=/:account/workers) and click on your Worker
-2. Go to **Settings → Bindings**
-3. Click **Add binding**
-4. Select **KV Namespace**
-5. Set the **variable name** to `WEBHOOKS` — this must be exactly `WEBHOOKS` as the code references `env.WEBHOOKS`
-6. Select the namespace you just created from the dropdown
-7. Click **Save** and **Deploy**
-
-Your Worker now has access to KV. No redeploy from GitHub is needed — the binding takes effect immediately.
-
-> **Note:** If you later redeploy from your fork (via GitHub Actions), the deploy will use `wrangler.toml` which has the KV binding commented out. This will **remove the dashboard-set binding**. To avoid this, either re-bind via the dashboard after each deploy, or switch to the CLI method below for a permanent setup.
-
-#### Option B: CLI with Wrangler
-
-If you prefer the command line, or want the binding to persist across redeploys:
-
-**1. Create the namespace:**
+For CLI or GitHub Actions deployments, create a namespace and add its ID to `wrangler.toml`:
 
 ```bash
 npx wrangler kv namespace create WEBHOOKS
 ```
-
-This outputs a namespace ID — copy it.
-
-**2. Bind it to your Worker** by opening `wrangler.toml` and **uncommenting** the KV lines, then pasting your ID:
 
 ```toml
 [[kv_namespaces]]
@@ -198,13 +166,7 @@ binding = "WEBHOOKS"
 id = "paste-your-id-here"
 ```
 
-These lines are commented out by default so that first-time deploys don't fail.
-
-**3. Redeploy** so the Worker picks up the new binding:
-
-```bash
-npm run deploy
-```
+See the wiki’s [KV configuration guide](https://github.com/motionbug/setupmanagerhud/wiki/Configuration#kv-namespace-required) for dashboard steps, CLI steps, and how redeploys affect bindings.
 
 ### Connecting Setup Manager
 
@@ -287,16 +249,7 @@ Once the script finishes, open the dashboard in your browser. You should see eve
 
 ### Cleaning Up Test Data from KV
 
-After testing, you'll likely want to remove the dummy events. Cloudflare KV entries have a 90-day TTL so they will expire on their own, but you can remove them immediately through the Cloudflare dashboard:
-
-1. Log in to the [Cloudflare dashboard](https://dash.cloudflare.com)
-2. Go to **Workers & Pages → KV** in the left sidebar
-3. Click on your **WEBHOOKS** namespace
-4. You'll see a list of stored keys — dummy events use serial numbers starting with `DUMMY` (e.g. `com.jamf.setupmanager.started:DUMMY000001:...`)
-5. To delete individual entries: click the **three-dot menu** next to an entry and select **Delete**
-6. To bulk delete all test data: select entries using the checkboxes, then click **Delete selected**
-
-> **Tip:** You can use the search/filter field at the top of the KV viewer to filter keys containing `DUMMY` to quickly find and select all test entries.
+Dummy events use serial numbers starting with `DUMMY` and expire automatically after 90 days. You can remove them sooner from the Cloudflare KV dashboard by filtering for `DUMMY` in your `WEBHOOKS` namespace.
 
 ## Architecture
 
@@ -332,59 +285,16 @@ After testing, you'll likely want to remove the dummy events. Cloudflare KV entr
 - **Workers KV** - Event storage with 90-day TTL
 - **React + shadcn/ui** - Dashboard UI, built with Vite, served as static assets
 
-## Tech Stack
-
-| Component | Technology | License |
-|-----------|-----------|---------|
-| Auth | [Cloudflare Access](https://www.cloudflare.com/zero-trust/products/access/) | Free (50 users) |
-| Runtime | [Cloudflare Workers](https://workers.cloudflare.com/) | - |
-| Real-time | [Durable Objects](https://developers.cloudflare.com/durable-objects/) | - |
-| Storage | [Workers KV](https://developers.cloudflare.com/kv/) | - |
-| UI | [React](https://react.dev/) + [shadcn/ui](https://ui.shadcn.com/) | MIT |
-| Charts | [Recharts](https://recharts.org/) | MIT |
-| Styling | [Tailwind CSS](https://tailwindcss.com/) | MIT |
-| Icons | [HugeIcons](https://hugeicons.com/) | MIT |
-| Font | [Figtree](https://fonts.google.com/specimen/Figtree) | OFL |
-| Build | [Vite](https://vite.dev/) | MIT |
-
 ## Troubleshooting
 
 | Problem | Likely Cause | Solution |
 |---------|--------------|----------|
-| Worker returns 500 error | KV namespace not bound | See [KV Namespace](#kv-namespace-required) setup |
+| Worker returns 500 error | KV namespace not bound | See [KV setup](https://github.com/motionbug/setupmanagerhud/wiki/Configuration#kv-namespace-required) |
 | Dashboard shows no events | WebSocket not connecting | Check browser console for errors |
 | Webhook returns 401 | Token mismatch | Verify `WEBHOOK_TOKEN` matches your Setup Manager config |
 | Can't access dashboard | Cloudflare Access misconfigured | Check `CF_ACCESS_AUD` and `CF_ACCESS_TEAM_DOMAIN` |
 
-### KV Namespace Not Working
-
-If webhooks return 200 OK but events don't appear on the dashboard:
-
-1. **Verify the KV binding name is exactly `WEBHOOKS`** — the code references `env.WEBHOOKS`, so the binding variable name must match
-2. **Check the binding is active** — in Cloudflare Dashboard, go to Workers & Pages → your Worker → Settings → Bindings and confirm WEBHOOKS is listed
-3. **Redeploys can remove dashboard-set bindings** — if you bound KV via the dashboard but later redeployed from GitHub with a different `wrangler.toml` KV section, that config can overwrite your dashboard binding. Either:
-   - Re-bind via the dashboard after each deploy, or
-   - Update `wrangler.toml` with your actual KV namespace ID for persistent bindings
-
-### Webhook Authentication Format
-
-Setup Manager sends the webhook token in the `Authorization` header **without** the `Bearer` prefix:
-
-```
-Authorization: your-token-here
-```
-
-This differs from the standard `Authorization: Bearer <token>` format. The HUD accepts both formats, so you can test with curl using either:
-
-```bash
-# Standard Bearer format (works)
-curl -H "Authorization: Bearer your-secret" ...
-
-# Raw token format (how Setup Manager sends it)
-curl -H "Authorization: your-secret" ...
-```
-
-If webhooks return 401, verify the token in your Setup Manager plist matches the `WEBHOOK_TOKEN` set on your Worker exactly (case-sensitive, no extra whitespace).
+For detailed fixes, see the [Troubleshooting wiki](https://github.com/motionbug/setupmanagerhud/wiki/Troubleshooting). For token behavior, see [Webhook Authentication Format](https://github.com/motionbug/setupmanagerhud/wiki/Troubleshooting#webhooks-return-401-unauthorized).
 
 ## Contributing
 
