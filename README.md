@@ -182,13 +182,23 @@ By default, a daily scheduled cleanup keeps 90 days of D1 event history. You can
 
 In your Setup Manager configuration, set the webhook URL to:
 
-```
+```xml
 <key>webhooks</key>
 <dict>
   <key>started</key>
-  <string>https://setupmanagerhud.<your-subdomain>.workers.dev/webhook</string>
+  <dict>
+    <key>url</key>
+    <string>https://setupmanagerhud.<your-subdomain>.workers.dev/webhook</string>
+    <key>token</key>
+    <string>your-webhook-token-here</string>
+  </dict>
   <key>finished</key>
-  <string>https://setupmanagerhud.<your-subdomain>.workers.dev/webhook</string>
+  <dict>
+    <key>url</key>
+    <string>https://setupmanagerhud.<your-subdomain>.workers.dev/webhook</string>
+    <key>token</key>
+    <string>your-webhook-token-here</string>
+  </dict>
 </dict>
 ```
 
