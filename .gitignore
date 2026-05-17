@@ -31,8 +31,11 @@ npm-debug.log*
 # Claude
 CLAUDE.md
 SECURITY_AUDIT.md
+GEMINI.md
+AGENTS.md
 /.claude
 /.planning
+
 
 # Local security notes
 setupmanagerHUD-threat-model.md
