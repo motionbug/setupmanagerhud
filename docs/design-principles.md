@@ -35,5 +35,5 @@ Setup Manager HUD is an IT operations console for Jamf and Apple admins. It shou
 ## Cloudflare-Aware UX
 
 - If D1 or Durable Objects are degraded, show a direct operational warning instead of letting the dashboard look empty.
-- Keep Cloudflare Access, webhook token, D1 binding, and migration setup language precise in docs.
+- Keep Cloudflare Access, webhook token, D1 binding, and database setup language precise in docs.
 - Avoid exposing sensitive deployment values in screenshots, docs, tests, or examples.
